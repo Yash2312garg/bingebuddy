@@ -1,8 +1,9 @@
 const crypto = require('crypto')
-import { redisClient } from "../database/redis";
-import type {  CreateLimiterConfig, OTPConfig, RateLimitConfigs } from './Types';
+import type {  OTPConfig, RateLimitConfigs } from './Types';
+//redis dao
+import { OtpDao } from "../dao/otp.dao";
 
-import type { Request, Response, NextFunction } from "express";
+import type { Request} from "express";
 import bcrypt from "bcrypt"
 
 
@@ -38,118 +39,103 @@ export const getAttemptsKey = (identifier: string): string => `attempts:${identi
 
 export const getCooldownKey = (identifier: string): string => `cooldown:${identifier}`;
 
-export const createRateLimiter = (config: CreateLimiterConfig) => {
-    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-        try {
-            const key = getClientKey(req, config.type);
-            const current = await redisClient.get(key);
+// export const createRateLimiter = (config: CreateLimiterConfig) => {
+//     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+//         try {
+//             const key = getClientKey(req, config.type);
+//             const current = await redisClient.get(key);
             
-            if (current && parseInt(current) >= config.config.max) {
-                res.status(429).json({
-                    success: false,
-                    message: `Too many requests. Try again in ${config.config.window} seconds.`,
-                    retryAfter: config.config.window
-                });
-                return;
-            }
+//             if (current && parseInt(current) >= config.config.max) {
+//                 res.status(429).json({
+//                     success: false,
+//                     message: `Too many requests. Try again in ${config.config.window} seconds.`,
+//                     retryAfter: config.config.window
+//                 });
+//                 return;
+//             }
             
-            const multi = redisClient.multi();
-            multi.incr(key);
-            multi.expire(key, config.config.window);
-            await multi.exec();
+//             const multi = redisClient.multi();
+//             multi.incr(key);
+//             multi.expire(key, config.config.window);
+//             await multi.exec();
             
-            next();
-        } catch (error) {
-            console.error('Rate limiting error:', error);
-            next(); // Continue on rate limiter failure
-        }
-    };
-};
+//             next();
+//         } catch (error) {
+//             console.error('Rate limiting error:', error);
+//             next(); // Continue on rate limiter failure
+//         }
+//     };
+// };
 
-export const generateOTPLimiter = createRateLimiter({
-    type: 'generate',
-    config: RATE_LIMIT_CONFIG.GENERATE_OTP
-});
+// export const generateOTPLimiter = createRateLimiter({
+//     type: 'generate',
+//     config: RATE_LIMIT_CONFIG.GENERATE_OTP
+// });
 
 
-export const verifyOTPLimiter = createRateLimiter({
-    type: 'verify',
-    config: RATE_LIMIT_CONFIG.VERIFY_OTP
-});
+// export const verifyOTPLimiter = createRateLimiter({
+//     type: 'verify',
+//     config: RATE_LIMIT_CONFIG.VERIFY_OTP
+// });
 
 
 export class OTPService {
     static async generateAndStore(identifier: string): Promise<string> {
-        const cooldownKey = getCooldownKey(identifier);
-        const cooldownExists = await redisClient.exists(cooldownKey);
+
+        const cooldownExists =  await OtpDao.checkCoolDown(identifier);
         
         if (cooldownExists) {
-            const ttl = await redisClient.ttl(cooldownKey);
+            const ttl = await OtpDao.getCoolDownTTL(identifier);
             throw new Error(`Please wait ${ttl} seconds before requesting a new OTP`);
         }
         
         const otp = createOTP();
         const hashedOTP = await bcrypt.hash(otp, 10);
         
-        const otpKey = getOTPKey(identifier);
-        const attemptsKey = getAttemptsKey(identifier);
-        
-        const multi = redisClient.multi();
-        multi.setEx(otpKey, OTP_CONFIG.TTL, hashedOTP);
-        multi.setEx(attemptsKey, OTP_CONFIG.TTL, OTP_CONFIG.MAX_ATTEMPTS.toString());
-        multi.setEx(cooldownKey, OTP_CONFIG.RESEND_COOLDOWN, '1');
-        
-        await multi.exec();
+        await OtpDao.storeOTP(hashedOTP, identifier, OTP_CONFIG.TTL,OTP_CONFIG.MAX_ATTEMPTS,OTP_CONFIG.RESEND_COOLDOWN)
         
         return otp;
     }
+
     static async verify(identifier: string, otp: string): Promise<boolean> {
         console.log(otp,typeof otp)
 
-        const otpKey = getOTPKey(identifier);
-        const attemptsKey = getAttemptsKey(identifier);
-        console.log("otpKey",otpKey)
-        // Check if OTP exists
-        const storedHashedOTP = await redisClient.get(otpKey);
-
+        const storedHashedOTP = await OtpDao.getOTP(identifier);
         if (!storedHashedOTP) {
             throw new Error('OTP expired or not found');
         }
-        
-        const remainingAttempts = await redisClient.get(attemptsKey);
-        if (!remainingAttempts || parseInt(remainingAttempts) <= 0) {
-            await redisClient.del(otpKey);
-            await redisClient.del(attemptsKey);
+         
+        const remainingAttempts = await this.getRemainingAttempts(identifier)
+        if (!remainingAttempts || remainingAttempts <= 0) {
+
+            await OtpDao.deleteHashedOtp(identifier);
+            await OtpDao.deleteAttempts(identifier);
+            
             throw new Error('Maximum verification attempts exceeded');
         }
         
         const isValid = await bcrypt.compare(otp.toString(), storedHashedOTP);
         
         if (!isValid) {
-            await redisClient.decr(attemptsKey);
-            const newAttempts = parseInt(await redisClient.get(attemptsKey) || '0');
+            await OtpDao.decrement_attempt(identifier)
+            const newAttempts =await this.getRemainingAttempts(identifier) ? await this.getRemainingAttempts(identifier):0;
             throw new Error(`Invalid OTP. ${newAttempts} attempts remaining`);
         }
         
-        await redisClient.del(otpKey);
-        await redisClient.del(attemptsKey);
-        await redisClient.del(getCooldownKey(identifier));
-        
+            await OtpDao.deleteHashedOtp(identifier);
+            await OtpDao.deleteAttempts(identifier);
+            await OtpDao.deleteCooldown(identifier);
         return true;
     }
     static async getRemainingAttempts(identifier: string): Promise<number> {
-        const attemptsKey = getAttemptsKey(identifier);
-        const attempts = await redisClient.get(attemptsKey);
+        const attempts= await OtpDao.getRemainingAttempts(identifier)
         return attempts ? parseInt(attempts) : 0;
     }
     static async getOTPTTL(identifier: string): Promise<number> {
-        const otpKey = getOTPKey(identifier);
-        return await redisClient.ttl(otpKey);
+        return await OtpDao.getOtpTTL(identifier);
+
     }
     static async clear(identifier:string):Promise<void>{
-        await redisClient.del(getOTPKey(identifier));
-        await redisClient.del(getAttemptsKey(identifier));
-        await redisClient.del(getCooldownKey(identifier));
+        return await OtpDao.clearAll(identifier)
     }
-
 }

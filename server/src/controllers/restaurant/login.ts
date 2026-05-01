@@ -10,6 +10,7 @@ import {
 import { OTPService } from "../../utils/generateOTP";
 import { Restaurant_JWT } from "../../services/restaurant/createwebtokens";
 import { redisClient } from "../../database/redis";
+import { OtpDao } from "../../dao/otp.dao";
 
 export const login = async (req: Request, res: Response) => {
   const { email, reference_id, phone_number } = req.body;
@@ -311,3 +312,25 @@ export const checkPreLoginSession = async (req: Request, res: Response) => {
   }
 };
 
+export const getOtpStatus = async (req: Request, res:Response) =>{
+
+  try{
+    const identifier = req.session.otpIdentifier;
+    console.log("helo")
+    if(!identifier){
+      return res.status(400).json({
+        message: "Session Expired"
+      })
+    }
+
+    const ttl = await OTPService.getOTPTTL(identifier);
+    const cooldownTTL = await OtpDao.getCoolDownTTL(identifier);
+
+    return res.status(200).json({
+            otpExpiresIn: ttl,          // remaining OTP validity
+      cooldownRemaining: cooldownTTL > 0 ? cooldownTTL : 0
+    })
+  }catch(err){
+    return res.status(500).json({message:"Internal Server Error"})
+  }
+}

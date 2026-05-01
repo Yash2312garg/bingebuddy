@@ -15,6 +15,14 @@ export const verifyOTPUtils = async (otp: string) => {
   }
 };
 
+
+export const fetchOtpStatus = async()=>{
+    const res = await axios.get(base_api_url + "restaurant/otp/status", { withCredentials: true });
+    if (res.status === 200){
+      return res.data
+    }
+  };
+
 export const resendOTPUtils = async () => {
   const response = await axios.post(
     base_api_url + "restaurant/resendOtp",

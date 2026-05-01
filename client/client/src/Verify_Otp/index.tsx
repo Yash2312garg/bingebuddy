@@ -10,25 +10,29 @@ import { Input } from "../Components/Input/Input";
 import OtpResendTimer from "./OtpResendTimer";
 import Btn from "../Components/Buttons/Button";
 import { useNavigate } from "react-router-dom";
-import { verifyOTPUtils ,resendOTPUtils, checkpreloginSession} from "./utils";
+import {
+  verifyOTPUtils,
+  resendOTPUtils,
+  checkpreloginSession,
+  fetchOtpStatus,
+} from "./utils";
 import axios from "axios";
-
 
 interface RequestOTPError {
   status: number;
-  message: string|undefined;
+  message: string | undefined;
 }
-
 
 const number_of_boxes = 6;
 const VerifyOTP: React.FC = () => {
   const [otpLoading, setOtpLoading] = useState<boolean>(false);
   const [otp, setOTP] = useState<string[]>(new Array(number_of_boxes).fill(""));
-  const [otpError,setOtpError] = useState<RequestOTPError|null>(null)
-
+  const [otpError, setOtpError] = useState<RequestOTPError | null>(null);
+  const [initialCooldown, setCooldown] = useState<number>(60);
   const otpBoxRef = useRef<(HTMLInputElement | null)[]>([]);
 
   const navigate = useNavigate();
+
   const handleOTPChange = (value: string, index: number) => {
     // setOTP(e.target.value);
     let newArr = [...otp];
@@ -42,9 +46,7 @@ const VerifyOTP: React.FC = () => {
     e: React.KeyboardEvent<HTMLInputElement>,
     index: number,
   ) {
-
     if (e.key === "Backspace" && e.currentTarget && index > 0) {
-    
       otpBoxRef.current[index - 1]?.focus();
     }
     if (e.key === "Enter" && e.currentTarget && index < number_of_boxes - 1) {
@@ -54,66 +56,66 @@ const VerifyOTP: React.FC = () => {
   const verifyOTP = async () => {
     try {
       setOtpLoading(true);
-      setOtpError(null)
-      const response = await verifyOTPUtils(otp.join(""))
-      if (response.auth_status === null){
-        navigate("/login/info")
+      setOtpError(null);
+      const response = await verifyOTPUtils(otp.join(""));
+      if (response.auth_status === null) {
+        navigate("/login/info");
       }
-      if(response.auth_status === "PENDING"){
-        navigate("/login/status=pending")
+      if (response.auth_status === "PENDING") {
+        navigate("/login/status=pending");
       }
     } catch (error) {
-     if (axios.isAxiosError(error)){
-        console.log(error.response)
+      if (axios.isAxiosError(error)) {
+        console.log(error.response);
         setOtpError({
-          status:error.response?.status as number,
-          message:error.response?.data?.message 
-        })
+          status: error.response?.status as number,
+          message: error.response?.data?.message,
+        });
       }
-
     } finally {
       setOtpLoading(false);
     }
   };
-  const onResend = async()=>{
-    try{
-    setOtpLoading(true)
-    setOtpError(null)
+  const onResend = async () => {
+    try {
+      setOtpLoading(true);
+      setOtpError(null);
 
-    await resendOTPUtils()
-
-    }catch (error) {
-     if (axios.isAxiosError(error)){
-        console.log(error.response)
+      await resendOTPUtils();
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.log(error.response);
         setOtpError({
-          status:error.response?.status as number,
-          message:error.response?.data?.message 
-        })
+          status: error.response?.status as number,
+          message: error.response?.data?.message,
+        });
       }
-
     } finally {
       setOtpLoading(false);
     }
-
-  }
+  };
   function ChangeEmailorReferenceId() {
     navigate("/login");
   }
-  useEffect(()=>{
-    const checkSession = async()=>{
-        try{
-          const checkSession = await checkpreloginSession()
-        if (!checkSession.isActive){
-           navigate("/login")
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const checkSession = await checkpreloginSession();
+        const OtpStatus = await fetchOtpStatus();
+        console.log(OtpStatus)
+        if(OtpStatus){
+          setCooldown(OtpStatus.cooldownRemaining)
         }
-        }catch(e){
-          navigate("/login")
-        }     
-    }
-    checkSession()
-  },[])
-
-
+        if (!checkSession.isActive) {
+          navigate("/login");
+        }
+      } catch (e) {
+        navigate("/login");
+      }
+    };
+    checkSession();
+  }, []);
+  console.log(initialCooldown)
   return (
     <div className="Login-Page-Main-Container">
       <Navbar />
@@ -156,8 +158,11 @@ const VerifyOTP: React.FC = () => {
                   );
                 })}
               </div>
-              <Input.Description/>
-              <OtpResendTimer initialTime={30} onResend={onResend} />
+              <Input.Description />
+              <OtpResendTimer
+                initialTime={initialCooldown}
+                onResend={onResend}
+              />
             </Input>
             <Btn
               variant="Primary"
