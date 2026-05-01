@@ -1,0 +1,29 @@
+.Login-Page-Container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - 72px);
+
+  background-color: var(--Card_Input-Background-Color);
+}
+.Login-Card-Layout-Heading-Container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.Login-Card-Layout-Input-Container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 24px;
+}
+.login-error-msg{
+  color: var(--Error-color);
+  align-self: flex-start;
+  font-size: 14px;
+}

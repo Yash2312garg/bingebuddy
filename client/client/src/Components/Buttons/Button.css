@@ -1,0 +1,63 @@
+.btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background-color: var(--Brand-Primary-Colors);
+  color: #fff;
+  border: none;
+}
+
+.btn.disabled {
+  background-color: var(--Medium-Grey-color);
+}
+.btn.disabled:hover {
+  background-color: var(--Medium-Grey-color);
+}
+
+.btn.primary:hover {
+  background-color: var(--light-purple-color);
+}
+.btn.secondary {
+  background-color: #fff;
+  color: var(--Brand-Primary-Colors);
+  border: 1px solid var(--Brand-Primary-Colors);
+}
+.btn.secondary:hover {
+  background-color: var(--Card_Input-Background-Color);
+}
+
+.btn.tertiary {
+  background-color: #fff;
+  color: var(--Primary-Text-Color);
+  border: none;
+}
+.btn.tertiary:hover {
+  background-color: var(--Card_Input-Background-Color);
+}
+
+.btn.large {
+  padding: 12px 24px;
+  font-size: 16px;
+  height: 48px;
+  width: fit-content;
+}
+
+.btn.medium {
+  padding: 12px 24px;
+  font-size: 16px;
+  height: 40px;
+  width: fit-content;
+}
+
+.btn.small {
+  font-size: 14px;
+  height: 32px;
+  padding: 12px 24px;
+  width: fit-content;
+}

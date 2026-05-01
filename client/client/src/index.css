@@ -1,0 +1,25 @@
+:root {
+  --Brand-Primary-Colors: #7000ff;
+  --Brand-Secondary-Colors: #ffd600;
+  --Brand-Tertiary-Colors: #ff1b8d;
+  --Main-Background-Color: #f8f7ff;
+  --Card_Input-Background-Color: #eaeaf2;
+  --Primary-Text-Color: #2c2a4a;
+  --Secondary-Text-Color: #8a8998;
+  --Success-Color: #76ff03;
+  --Error-color: #ff1744;
+  --Warning-color: #ffc400;
+  --information-color: #ffffff;
+  --light-purple-color: #862eff;
+  --Dark-purple-color: #5f00e0;
+  --Medium-Grey-color: #a0a0a0;
+  --muted-Grey-color: #dcd9e8;
+  --Trace-Grey-Color: #e0e0e6;
+  --Ghost-White-Color: #f8f7ff;
+  --Primary-Text-Color-rgb: 44, 42, 74;
+  /* Add more custom properties */
+  body {
+    margin: 0;
+    font-family: "poppins", sans-serif;
+  }
+}

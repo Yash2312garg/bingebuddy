@@ -1,0 +1,20 @@
+
+.PendingVerificationScreen-cntr{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    height: calc(100vh - 72px);
+    flex-direction: column;
+}
+.PendingVerificationScreen-cntr h2{
+    font-size: 32px;
+    color: var(--Primary-Text-Color);
+
+}
+.PendingVerificationScreen-cntr p{
+color:var(--Secondary-Text-Color)
+}
+.PendingVerificationScreen-cntr span{
+    color: var( --Brand-Primary-Colors);
+}

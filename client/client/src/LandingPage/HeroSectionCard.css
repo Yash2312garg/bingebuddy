@@ -1,0 +1,6 @@
+.Hero-Section-Card-Container {
+  height: 390px;
+  width: 390px;
+  background-color: var(--Ghost-White-Color);
+  border-radius: 24px;
+}

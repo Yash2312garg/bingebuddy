@@ -1,0 +1,47 @@
+.Landing-Page-Content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 40px;
+  flex: 1;
+}
+.Hero-Section-Primary-Content {
+  color: var(--Primary-Text-Color);
+  font-size: 54px;
+  line-height: 64px;
+  font-weight: 700;
+}
+.Hero-Section-Secondary-Content {
+  color: var(--Secondary-Text-Color);
+  font-size: 18px;
+}
+.Hero-Section-Content-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 24px;
+}
+.Hero-Section-Btns-cntr {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 24px;
+}
+.Landing-Page-Hero-Section-Container {
+  display: flex;
+  flex-direction: row;
+  height: calc(100vh - 72px);
+  align-items: center;
+  justify-content: center;
+  gap: 64px;
+  padding: 0 120px;
+}
+.Landing-Page-Hero-Section-Card-Cntr {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

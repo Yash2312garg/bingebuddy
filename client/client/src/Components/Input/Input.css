@@ -1,0 +1,135 @@
+/* ─── Root ─────────────────────────────────────────────── */
+.Input-Wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* ─── Top Label ─────────────────────────────────────────── */
+.Input-Top-Label {
+  font-size: 14px;               /* tightened from 16px — labels read better smaller */
+  color: var(--Primary-Text-Color);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 0.01em;
+}
+
+/* ─── Field Container ───────────────────────────────────── */
+.Input-Field-Container {
+  width: 100%;
+  position: relative;            /* anchors the placeholder icon */
+  display: flex;
+  align-items: center;
+}
+
+/* ─── Placeholder Icon ──────────────────────────────────── */
+.Input-Placeholder-Icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--Secondary-Text-Color);
+  pointer-events: none;
+  font-size: 16px;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+/* ─── Input ─────────────────────────────────────────────── */
+.Input {
+  background-color: var(--Card_Input-Background-Color);
+  outline: none;
+  border: 1px solid var(--Trace-Grey-Color);
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+  padding: 10px 16px;
+  width: 100%;
+  box-sizing: border-box;
+  color: var(--Primary-Text-Color);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+  line-height: 1.5;
+}
+
+/* Shift text right when an icon is present */
+.Input-Field-Container:has(.Input-Placeholder-Icon) .Input {
+  padding-left: 42px;
+}
+
+/* Placeholder text */
+.Input::placeholder {
+  color: var(--Secondary-Text-Color);
+  opacity: 1;
+}
+
+/* Hover */
+.Input:hover:not(:disabled):not(.Input-Error) {
+  border-color: var(--muted-Grey-color);
+  background-color: var(--Card_Input-Background-Color);
+}
+
+/* Focus */
+.Input:focus:not(:disabled):not(.Input-Error) {
+  border-color: var(--Brand-Primary-Colors);
+  background-color: var(--Ghost-White-Color);
+  box-shadow: 0 0 0 3px rgba(112, 0, 255, 0.12);
+}
+
+/* Focus — shift icon color to brand */
+.Input-Field-Container:has(.Input:focus) .Input-Placeholder-Icon {
+  color: var(--Brand-Primary-Colors);
+}
+
+/* Error state */
+.Input.Input-Error {
+  border-color: var(--Error-color);
+  background-color: var(--Ghost-White-Color);
+}
+
+.Input.Input-Error:focus {
+  box-shadow: 0 0 0 3px rgba(255, 23, 68, 0.12);
+}
+
+.Input-Field-Container:has(.Input-Error) .Input-Placeholder-Icon {
+  color: var(--Error-color);
+}
+
+/* Disabled */
+.Input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: var(--Trace-Grey-Color);
+  background-color: var(--muted-Grey-color);
+  color: var(--Secondary-Text-Color);
+}
+
+.Input-Wrapper:has(.Input:disabled) .Input-Top-Label {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Bottom Label ──────────────────────────────────────── */
+.Input-Bottom-Label {
+  font-size: 13px;
+  color: var(--Secondary-Text-Color);
+  line-height: 1.4;
+  min-height: 1.4em;             /* prevents layout shift when toggling error */
+  display: block;
+  transition: color 0.15s ease;
+}
+
+.Input-Bottom-Label-Error {
+  color: var(--Error-color);
+}

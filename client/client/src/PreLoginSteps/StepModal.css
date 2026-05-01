@@ -1,0 +1,24 @@
+.StepModal-cntr {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  background-color: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  gap: 12px;
+  width: 400px;
+}
+.Modal-Description-Span {
+  color: var(--Secondary-Text-Color);
+  font-size: 16px;
+  font-weight: 200;
+  text-align: center;
+}
+.StepsCountHeading {
+  color: var(--Brand-Primary-Colors);
+  font-weight: 600;
+}
+.StepsModalHeading {
+  text-align: center;
+}

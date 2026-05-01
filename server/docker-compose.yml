@@ -1,0 +1,121 @@
+services: 
+  # ========================================
+  # Development Service
+  # ========================================
+  app-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: binge_buddy_backend
+    ports:
+      - '${APP_PORT:-8000}:3000' # Maps host 8000 to container 3000
+      - '9229:9229'             # Debugger port
+    env_file:
+      - .env
+    environment: 
+      NODE_ENV: development
+      DOCKER_ENV: 'true'
+      DB_HOST: db
+      DB_PORT: 5432      # Overrides 'localhost' in your .env
+      REDIS_URL: redis://redis:6379 # Overrides '127.0.0.1' in your .env
+    volumes:
+      - ./src:/usr/src/app/src:ro             # Match WORKDIR in Dockerfile
+      - ./package.json:/usr/src/app/package.json
+      - ./.env:/usr/src/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /usr/src/app/src
+          ignore:
+            - '**/*.test.*'
+        - action: rebuild
+          path: ./package.json
+    restart: unless-stopped
+    networks:
+      - bingebuddy-network # Use the same network for all services
+
+  # ========================================
+  # Production Service (Profiles: prod)
+  # ========================================
+  app-prod: 
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: binge_buddy_backend_prod
+    ports:
+      - '${PROD_PORT:-8080}:3000'
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: '${PROD_MEMORY_LIMIT:-2G}'
+          cpus: '${PROD_CPU_LIMIT:-1.0}'
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - bingebuddy-network # Ensure prod uses the same network
+    profiles:
+      - prod
+
+  # ========================================
+  # PostgreSQL Database Service
+  # ========================================
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    container_name: bingebuddy-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bingebuddy}
+      POSTGRES_USER: ${POSTGRES_USER:-yash}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Nishi@123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-yash} -d $${POSTGRES_DB:-bingebuddy}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bingebuddy-network
+
+  # ========================================
+  # Redis Database Service
+  # ========================================
+  redis:
+    build:
+      context: .
+      dockerfile: Dockerfile.redis
+    container_name: bingebuddy-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bingebuddy-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  bingebuddy-network:
+    driver: bridge

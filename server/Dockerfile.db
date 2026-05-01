@@ -1,0 +1,5 @@
+FROM postgres:15-alpine
+# This is the "Entrypoint" magic that populates your DB
+COPY init.sql /docker-entrypoint-initdb.d/
+ENV POSTGRES_DB=bingebuddy
+ENV POSTGRES_PASSWORD=Nishi@123

@@ -1,0 +1,58 @@
+
+.Side-bar-wrapper{
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-direction: column;
+    gap: 2px;
+    height:100vh;
+    box-sizing: border-box; 
+    width: 20vw;
+    min-width: 200px;
+    border-bottom: 1px solid var(--Trace-Grey-Color);
+    min-width: fit-content;
+    
+    
+}
+.Sidebar-header{
+    border-bottom: 1px solid var(--Trace-Grey-Color);
+    width: 100%;
+    padding: 10px 20px;
+    box-sizing: border-box;
+
+    border-right: 1px solid var(--Trace-Grey-Color);
+}
+.Sidebar-header p{
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0px;
+    padding-left: 4px;
+    color: var(--Secondary-Text-Color);
+}
+
+.Side-bar-Menu-options{
+      display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 10px 20px;
+    color: var( --Primary-Text-Color);
+    border-bottom: 1px solid var(--Trace-Grey-Color);
+    border-right: 1px solid var(--Trace-Grey-Color);
+}
+.Side-bar-menu-option{
+    padding: 10px 10px;
+    width: 100%;
+    box-sizing: border-box;
+
+    border-radius: 8px;
+}
+.Side-bar-menu-option:hover{
+    background-color: var(--Brand-Primary-Colors);
+    color: #fff;
+}
