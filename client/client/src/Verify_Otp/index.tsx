@@ -64,6 +64,9 @@ const VerifyOTP: React.FC = () => {
       if (response.auth_status === "PENDING") {
         navigate("/login/status=pending");
       }
+      if(response.auth_status==="APPROVED"){
+        navigate("/home")
+      }
     } catch (error) {
       if (axios.isAxiosError(error)) {
         console.log(error.response);

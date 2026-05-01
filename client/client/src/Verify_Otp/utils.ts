@@ -38,7 +38,6 @@ export const checkpreloginSession = async () => {
   const response = await axios.get(base_api_url + "restaurant/checkSession", {
     withCredentials: true,
   });
-  console.log(response)
   if (response.status === 200) {
     return response.data;
   }

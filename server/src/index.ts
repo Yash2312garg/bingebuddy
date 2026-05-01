@@ -33,7 +33,6 @@ app.use("/restaurant",restaurantMenuRoutes);
 
 
 app.get('/', (_req: Request, res:Response) => {
-    
     res.status(200).json('Hello World!');
 });
 

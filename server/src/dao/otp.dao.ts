@@ -50,7 +50,7 @@ export class OtpDao{
         await redisClient.del(this.getAttemptsKey(identifier))
     }
     static async clearAll(identifier: string): Promise<void> {
-        Promise.all([
+        await Promise.all([
             redisClient.del(this.getOTPKey(identifier)),
             redisClient.del(this.getAttemptsKey(identifier)),
             redisClient.del(this.getCooldownKey(identifier)),

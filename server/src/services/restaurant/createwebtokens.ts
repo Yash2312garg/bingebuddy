@@ -10,7 +10,7 @@ export interface SignAccessArguments{
     phone: string;
 }
 
-interface VerifiRefreshTokenArguments extends SignAccessArguments{
+interface RefreshTokenArguments extends SignAccessArguments{
     deviceId: string
 }
 
@@ -20,14 +20,14 @@ export class Restaurant_JWT{
         const options: SignOptions={expiresIn}
         return jwt.sign({...data},ACCESS_SECRET,  options)
     }
-    static signRefreshToken(data:SignAccessArguments,deviceId: string){
+    static signRefreshToken(data:RefreshTokenArguments,deviceId: string){
         return jwt.sign({ ...data, deviceId }, REFRESH_SECRET, { expiresIn: "7d" });
     }
 
     static verifyAccessToken(token: string){
-         return jwt.verify(token, ACCESS_SECRET) as VerifiRefreshTokenArguments 
+         return jwt.verify(token, ACCESS_SECRET) as SignAccessArguments 
     }
     static verifyRefreshToken(token:string){
-        return jwt.verify(token,REFRESH_SECRET) as VerifiRefreshTokenArguments 
+        return jwt.verify(token,REFRESH_SECRET) as RefreshTokenArguments & {deviceId: string}
     }
 }

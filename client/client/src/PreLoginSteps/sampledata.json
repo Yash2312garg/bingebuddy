@@ -1,0 +1,78 @@
+{
+"step3":
+    [
+  {
+    "panNumber": "ABCDE1234F",
+    "gstNumber": "27ABCDE1234F1Z5",
+    "aadhaarNumber": "2345 6789 1234",
+    "fssaiLicenseNumber": "10021022001234"
+  },
+  {
+    "panNumber": "PQRSX5678K",
+    "gstNumber": "09PQRSX5678K1Z2",
+    "aadhaarNumber": "3456 7890 2345",
+    "fssaiLicenseNumber": "20022033004567"
+  },
+  {
+    "panNumber": "LMNOP4321Z",
+    "gstNumber": "29LMNOP4321Z2Z9",
+    "aadhaarNumber": "4567 8901 3456",
+    "fssaiLicenseNumber": "30023044007890"
+  },
+  {
+    "panNumber": "TUVWX9876A",
+    "gstNumber": "07TUVWX9876A1Z8",
+    "aadhaarNumber": "5678 9012 4567",
+    "fssaiLicenseNumber": "40024055001122"
+  },
+  {
+    "panNumber": "GHJKL2468M",
+    "gstNumber": "19GHJKL2468M1Z3",
+    "aadhaarNumber": "6789 0123 5678",
+    "fssaiLicenseNumber": "50025066003344"
+  }
+],
+"step4":
+[
+  {
+    "full_address": "Flat 302, Green Valley Apartments, Sector 56, Gurugram, Haryana 122011",
+    "street": "Sector 56",
+    "city": "Gurugram",
+    "state": "Haryana",
+    "postal_code": "122011",
+    "country": "India"
+  },
+  {
+    "full_address": "House No. 45, 3rd Cross, Indiranagar, Bengaluru, Karnataka 560038",
+    "street": "Indiranagar 3rd Cross",
+    "city": "Bengaluru",
+    "state": "Karnataka",
+    "postal_code": "560038",
+    "country": "India"
+  },
+  {
+    "full_address": "Plot 12, Near City Centre Mall, Salt Lake Sector V, Kolkata, West Bengal 700091",
+    "street": "Salt Lake Sector V",
+    "city": "Kolkata",
+    "state": "West Bengal",
+    "postal_code": "700091",
+    "country": "India"
+  },
+  {
+    "full_address": "B-210, Lajpat Nagar II, New Delhi, Delhi 110024",
+    "street": "Lajpat Nagar II",
+    "city": "New Delhi",
+    "state": "Delhi",
+    "postal_code": "110024",
+    "country": "India"
+  },
+  {
+    "full_address": "Shop No. 8, Shivaji Market, Dadar West, Mumbai, Maharashtra 400028",
+    "street": "Dadar West",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "postal_code": "400028",
+    "country": "India"
+  }
+]
+}

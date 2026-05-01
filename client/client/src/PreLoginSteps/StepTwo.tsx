@@ -27,35 +27,34 @@ const validation = useCallback((info: PreloginDataInterface) => {
   const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
   const fssaiRegex = /^[0-9]{14}$/;
   const aadhaarRegex = /^[0-9]{12}$/;
-  const gstRegex =
-    /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+  const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
   if (!info.pan.trim()) {
     newErrors.pan = "PAN number is required";
   } 
-  // else if (!panRegex.test(info.pan.toUpperCase())) {
-  //   newErrors.pan = "Invalid PAN format";
-  // }
+  else if (!panRegex.test(info.pan.toUpperCase())) {
+    newErrors.pan = "Invalid PAN format";
+  }
 
   if (!info.fassai.trim()) {
     newErrors.fassai = "FSSAI license number is required";
   } 
-  // else if (!fssaiRegex.test(info.fassai)) {
-  //   newErrors.fassai = "FSSAI must be 14 digits";
-  // }
+  else if (!fssaiRegex.test(info.fassai)) {
+    newErrors.fassai = "FSSAI must be 14 digits";
+  }
 
   if (!info.adhaar_card.trim()) {
     newErrors.adhaar_card = "Aadhaar number is required";
   } 
-  // else if (!aadhaarRegex.test(info.adhaar_card)) {
-  //   newErrors.adhaar_card = "Aadhaar must be 12 digits";
-  // }
+  else if (!aadhaarRegex.test(info.adhaar_card)) {
+    newErrors.adhaar_card = "Aadhaar must be 12 digits";
+  }
 
   if (!info.gst.trim()) {
-    newErrors.gst = "GST number is required";}
-  // } else if (!gstRegex.test(info.gst.toUpperCase())) {
-  //   newErrors.gst = "Invalid GST number";
-  // }
+    newErrors.gst = "GST number is required";
+  } else if (!gstRegex.test(info.gst.toUpperCase())) {
+    newErrors.gst = "Invalid GST number";
+  }
 
   setError(newErrors);
 }, []);

@@ -9,8 +9,10 @@ import {
 } from "../../models/restaurant/restaurant_accounts";
 import { OTPService } from "../../utils/generateOTP";
 import { Restaurant_JWT } from "../../services/restaurant/createwebtokens";
-import { redisClient } from "../../database/redis";
 import { OtpDao } from "../../dao/otp.dao";
+import { DeviceIdCookie } from "../../services/restaurant/getDeviceIdFromCookie";
+import { refreshTokenDao } from "../../dao/refreshToken.dao";
+import { AuthCookies } from "../../cookies/auth.cookies";
 
 export const login = async (req: Request, res: Response) => {
   const { email, reference_id, phone_number } = req.body;
@@ -123,16 +125,13 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
   try {
     const identifier = req.session.otpIdentifier;
-    console.log(req.session);
     if (!identifier) {
       return res.status(404).json({ message: "session expired" });
     }
-    console.log(otp, typeof otp);
     try {
       const status = await OTPService.verify(identifier, otp);
       if (status) {
         const userAuthStatus = await getAccountInformation(identifier);
-        console.log(userAuthStatus)
         if (userAuthStatus) {
           if (userAuthStatus.auth_status === "PENDING") {
             //remove  the ongoing session
@@ -141,7 +140,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
             //remove the ongoing session
             await OTPService.clear(identifier);
           } else if (userAuthStatus.auth_status === "APPROVED") {
-            const deviceId = crypto.randomUUID();
+            const deviceId = DeviceIdCookie.getOrCreateDeviceId(req,res);
             const accessToken = Restaurant_JWT.signAccessToken(
               {
                 email: userAuthStatus.email,
@@ -155,27 +154,14 @@ export const verifyOtp = async (req: Request, res: Response) => {
                 email: userAuthStatus.email,
                 phone: userAuthStatus.phone,
                 reference_id: userAuthStatus.reference_id,
+                deviceId
               },
               deviceId
             );
-            await redisClient.set(
-              `refresh:${userAuthStatus.reference_id}:${deviceId}`,
-              refreshToken,
-              "EX",
-              60 * 60 * 24 * 7
-            );
-            res.cookie("accessToken", accessToken, {
-              httpOnly: true,
-              secure: false,
-              sameSite: "strict",
-              maxAge: 1000 * 60 * 15,
-            });
 
-            res.cookie("refreshToken", refreshToken, {
-              httpOnly: true,
-              sameSite: "strict",
-              maxAge: 1000 * 60 * 60 * 24 * 7,
-            });
+            await refreshTokenDao.storeToken(userAuthStatus.reference_id,deviceId,refreshToken)
+            AuthCookies.setAccessTokenCookies(res,accessToken);
+            AuthCookies.setRefreshTokenCookies(res,refreshToken);
             await OTPService.clear(identifier);
           }
           return res.status(200).json({
