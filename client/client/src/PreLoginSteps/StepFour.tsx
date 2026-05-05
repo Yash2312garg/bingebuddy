@@ -9,6 +9,7 @@ import type { FileWithPreview } from "../Types/DragAndDrop";
 import axios from "axios";
 import { create_reference_id, upload_full_data } from "./utils";
 import { useNavigate } from "react-router-dom";
+import { publicApi } from "../utils/api";
 const base_api_url = import.meta.env.VITE_BASE_URL;
 
 const StepFour: React.FC<StepOneProps> = ({
@@ -31,7 +32,7 @@ const StepFour: React.FC<StepOneProps> = ({
     file: File,
     type: string,
   ) => {
-    const presignRes = await axios.post(
+    const presignRes = await publicApi.post(
       base_api_url + "restaurant/upload_pre_login_images",
       {
         state: state,
@@ -49,14 +50,14 @@ const StepFour: React.FC<StepOneProps> = ({
 
     const { uploadURL, key } = presignRes.data;
 
-    await axios.put(uploadURL, file, {
+    await publicApi.put(uploadURL, file, {
       headers: {
         "Content-Type": file.type,
       },
       maxBodyLength: Infinity,
     });
 
-    await axios.post(
+    await publicApi.post(
       base_api_url + "restaurant/confirm_upload",
       { key },
       {

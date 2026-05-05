@@ -1,4 +1,5 @@
 import axios from "axios";
+import { publicApi } from "../utils/api";
 const base_api_url = import.meta.env.VITE_BASE_URL;
 
 export interface OtpRequestPayload {
@@ -13,7 +14,7 @@ export interface ApiResponse {
 }
 
 
-export const api = axios.create({
+export const api = publicApi.create({
   baseURL: base_api_url,
   withCredentials: true,
 });

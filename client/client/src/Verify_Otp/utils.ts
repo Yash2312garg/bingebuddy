@@ -1,9 +1,10 @@
 import axios from "axios";
+import { publicApi } from "../utils/api";
 
 const base_api_url = import.meta.env.VITE_BASE_URL;
 
 export const verifyOTPUtils = async (otp: string) => {
-  const response = await axios.post(
+  const response = await publicApi.post(
     base_api_url + "restaurant/verifyOtp",
     { otp },
     {
@@ -17,14 +18,14 @@ export const verifyOTPUtils = async (otp: string) => {
 
 
 export const fetchOtpStatus = async()=>{
-    const res = await axios.get(base_api_url + "restaurant/otp/status", { withCredentials: true });
+    const res = await publicApi.get(base_api_url + "restaurant/otp/status", { withCredentials: true });
     if (res.status === 200){
       return res.data
     }
   };
 
 export const resendOTPUtils = async () => {
-  const response = await axios.post(
+  const response = await publicApi.post(
     base_api_url + "restaurant/resendOtp",
     { check: "hello" },
     { withCredentials: true },
@@ -35,7 +36,7 @@ export const resendOTPUtils = async () => {
 };
 
 export const checkpreloginSession = async () => {
-  const response = await axios.get(base_api_url + "restaurant/checkSession", {
+  const response = await publicApi.get(base_api_url + "restaurant/checkSession", {
     withCredentials: true,
   });
   if (response.status === 200) {

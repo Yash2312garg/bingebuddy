@@ -1,6 +1,6 @@
 import "./App.css";
 
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, createBrowserRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import Login from "./Login";
 import VerifyOTP from "./Verify_Otp";
 import LandingPage from "./LandingPage";
@@ -8,21 +8,34 @@ import PreLoginSteps from "./PreLoginSteps";
 import PendingVerificationScreen from "./Verify_Otp/PendingVerific";
 import Home from "./Home";
 import Menu from "./Menu";
+import { ProtectedRoutes } from "./utils/ProtectectRoutes";
+import { AuthProvider } from "./context/authContext";
+
 function App() {
+
+  const router = createBrowserRouter([
+    // ── Public routes ──────────────────────────
+    {path: "/", element: <LandingPage/>},
+    { path:"/" ,element:<LandingPage /> },
+    { path:"/login" ,element:<Login /> },
+    { path:"/verify-otp" ,element:<VerifyOTP /> },
+    { path:"/login/info", element:<PreLoginSteps />},
+    { path: "/login/status=pending", element:<PendingVerificationScreen/>},
+    // ── Protected routes ───────────────────────
+    {element: <ProtectedRoutes/>,   
+      children:[ 
+      { path: "/home", element : <Home/>},
+      { path: "/menu", element : <Menu/>}]
+    },
+    // ── 404 ───────────────────────────────────
+    { path: "*", element: <div>404 Not Found</div> }]
+)
+
   return (
     <>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/verify-otp" element={<VerifyOTP />} />
-          <Route path="/login/info" element={<PreLoginSteps />} />
-          <Route path= "/login/status=pending" element = {<PendingVerificationScreen/>}/>
-          <Route path= "/home" element = {<Home/>}/>
-          <Route path= "/menu" element = {<Menu/>}/>
-
-        </Routes>
-      </BrowserRouter>
+    <AuthProvider>
+      <RouterProvider router={router}/>
+    </AuthProvider>
     </>
   );
 }
