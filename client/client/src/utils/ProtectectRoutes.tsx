@@ -1,12 +1,12 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "../context/authContext"
+import { useAppSelector } from "../hooks/redux";
 
 
 
 export const ProtectedRoutes = ()=>{
-    const {user, isLoading} = useAuth();
+    const user = useAppSelector((state)=>state.auth.user);
+    const isLoading = useAppSelector((state)=>state.auth.isLoading);
     const location = useLocation();
-    console.log(user,"user")
     if (isLoading) return <div>Checking Session. Please wait.....</div>
 
     if(!user){

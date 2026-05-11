@@ -3,10 +3,10 @@ import type { Response, Request } from 'express';
 import { pool } from './database/db';
 import { redisClient } from './database/redis';
 import { RestaurantLoginSession } from './sessions/RestaurantLoginSession';
-import restaurantLoginRoutes from "./routes/restaurant/login"; 
-import restaurantLogoutRoutes from "./routes/restaurant/logout"
-import restaurantRefreshRoutes from "./routes/restaurant/refresh"
-import restaurantMenuRoutes from "./routes/restaurant/menu"
+import restaurantPreLoginRoutes from "./routes/restaurant/prelogin.routes"; 
+import restaurantMenuRoutes from "./routes/restaurant/menu.routes";
+import restaurantAuthRoutes from "./routes/auth/auth.routes";
+import restaurantInfoRoutes from "./routes/restaurant/restaurant.routes"
 import cookieParser from 'cookie-parser';
 import 'dotenv/config'; 
 import "./types/express-session"
@@ -20,16 +20,16 @@ app.use(RestaurantLoginSession)
 app.use(express.json())
 app.use(cookieParser())
 app.use(helmet())
-app.use(  cors({
+app.use( cors({
     origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 )
 
-app.use("/restaurant",restaurantLoginRoutes);
-app.use("/restaurant",restaurantLogoutRoutes);
-app.use("/restaurant-token",restaurantRefreshRoutes);
+app.use("/restaurant/prelogin",restaurantPreLoginRoutes);
 app.use("/restaurant",restaurantMenuRoutes);
+app.use("/auth", restaurantAuthRoutes)
+app.use("/restaurant/info",restaurantInfoRoutes) 
 
 
 app.get('/', (_req: Request, res:Response) => {

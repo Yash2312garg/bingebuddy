@@ -6,6 +6,6 @@ export const createUser = (req:Request,res:Response)=>{
         return res.status(200).json({message: "under development"})
     }catch(e){
         console.log(e)
-        return res.status(400).json({"msg":"internal server Error"})
+        return res.status(500).json({"msg":"internal server Error"})
     }   
 }

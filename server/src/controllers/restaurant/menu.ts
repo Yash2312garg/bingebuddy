@@ -4,7 +4,7 @@ import { MenueRequestBody,
     MenueItemsRequestData,
     // ComboItemsRequestData
  } from "../../types/Restaurant/Menue.types"
-import { Menu } from "../../models/restaurant/restaurant_menu"
+import { Menu } from "../../models/restaurant/restaurant_menu.model"
 
 export const addMenu =async (req:Request, res:Response)=>{
     try{

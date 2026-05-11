@@ -15,8 +15,11 @@ import {
   resendOTPUtils,
   checkpreloginSession,
   fetchOtpStatus,
-} from "./utils";
+} from "../api/publicApi/verifyotp.publicApi";
 import axios from "axios";
+import { useAppDispatch } from "../hooks/redux";
+import { getRestaurantInfo } from "../api/privateApi/getRestaurantInfo.privateApi";
+import { setUser } from "../slices/authSlice";
 
 interface RequestOTPError {
   status: number;
@@ -30,6 +33,7 @@ const VerifyOTP: React.FC = () => {
   const [otpError, setOtpError] = useState<RequestOTPError | null>(null);
   const [initialCooldown, setCooldown] = useState<number>(60);
   const otpBoxRef = useRef<(HTMLInputElement | null)[]>([]);
+  const dispatch = useAppDispatch();
 
   const navigate = useNavigate();
 
@@ -65,11 +69,14 @@ const VerifyOTP: React.FC = () => {
         navigate("/login/status=pending");
       }
       if(response.auth_status==="APPROVED"){
+        console.log("approved")
+        const restaurantInfo = await getRestaurantInfo();
+        dispatch(setUser(restaurantInfo));
         navigate("/home")
       }
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        console.log(error.response);
+        // console.log(error.response);
         setOtpError({
           status: error.response?.status as number,
           message: error.response?.data?.message,
@@ -105,7 +112,6 @@ const VerifyOTP: React.FC = () => {
       try {
         const checkSession = await checkpreloginSession();
         const OtpStatus = await fetchOtpStatus();
-        console.log(OtpStatus)
         if(OtpStatus){
           setCooldown(OtpStatus.cooldownRemaining)
         }
@@ -118,7 +124,6 @@ const VerifyOTP: React.FC = () => {
     };
     checkSession();
   }, []);
-  console.log(initialCooldown)
   return (
     <div className="Login-Page-Main-Container">
       <Navbar />

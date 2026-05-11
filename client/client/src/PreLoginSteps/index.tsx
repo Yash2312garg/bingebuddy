@@ -6,7 +6,7 @@ import StepTwo from "./StepTwo";
 import StepThree from "./StepThree";
 import StepFour from "./StepFour";
 import type { PreloginDataInterface } from "../Types/PreLoginSteps";
-import { checkpreloginSession } from "../Verify_Otp/utils";
+import { checkpreloginSession } from "../api/publicApi/verifyotp.publicApi";
 import { useNavigate } from "react-router-dom";
 const PreLoginSteps: React.FC = () => {
   const [step, setStep] = useState<number>(1);

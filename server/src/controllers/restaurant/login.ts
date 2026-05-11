@@ -6,7 +6,7 @@ import { getOtpEmailContent } from "../../services/email/getOTPEmailcontent";
 import {
   checkReferenceID,
   getAccountInformation,
-} from "../../models/restaurant/restaurant_accounts";
+} from "../../models/restaurant/restaurant_accounts.model";
 import { OTPService } from "../../utils/generateOTP";
 import { Restaurant_JWT } from "../../services/restaurant/createwebtokens";
 import { OtpDao } from "../../dao/otp.dao";
@@ -42,6 +42,7 @@ export const login = async (req: Request, res: Response) => {
       let otp = null;
       try {
         otp = await OTPService.generateAndStore(identifier);
+        console.log("otp",otp)
       } catch (err) {
         if (err instanceof Error) {
           console.error("Failed to generate OTP:", err.message);

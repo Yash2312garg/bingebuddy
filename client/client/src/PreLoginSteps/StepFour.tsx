@@ -6,7 +6,6 @@ import Btn from "../Components/Buttons/Button";
 import type { StepOneProps } from "../Types/PreLoginSteps";
 import DragAndDrop from "../Components/DragAndDrop/DragAndDrop";
 import type { FileWithPreview } from "../Types/DragAndDrop";
-import axios from "axios";
 import { create_reference_id, upload_full_data } from "./utils";
 import { useNavigate } from "react-router-dom";
 import { publicApi } from "../utils/api";
@@ -33,7 +32,7 @@ const StepFour: React.FC<StepOneProps> = ({
     type: string,
   ) => {
     const presignRes = await publicApi.post(
-      base_api_url + "restaurant/upload_pre_login_images",
+      base_api_url + "restaurant/prelogin/upload_pre_login_images",
       {
         state: state,
         city: city,
@@ -58,7 +57,7 @@ const StepFour: React.FC<StepOneProps> = ({
     });
 
     await publicApi.post(
-      base_api_url + "restaurant/confirm_upload",
+      base_api_url + "restaurant/prelogin/confirm_upload",
       { key },
       {
         headers: {

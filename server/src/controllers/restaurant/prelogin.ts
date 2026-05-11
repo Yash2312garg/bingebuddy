@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 // import { PreloginDataInterface } from "./Types";
-import { createNewRetaurantAccount } from "../../models/restaurant/restaurant_accounts";
-import { addRestaurantdata } from "../../models/restaurant/restaurant_details";
-import { addRestaurantAddress } from "../../models/restaurant/restaurant_address";
+import { createNewRetaurantAccount } from "../../models/restaurant/restaurant_accounts.model";
+import { addRestaurantdata } from "../../models/restaurant/restaurant_details.model";
+import { addRestaurantAddress } from "../../models/restaurant/restaurant_address.model";
 import { S3_Service } from "../../services/S3/s3";
 import { RestaurantFileKey } from "../../services/S3/restaurantFileKeyGenerator";
 import { create_reference_id } from "../../utils/generateRefernceId";

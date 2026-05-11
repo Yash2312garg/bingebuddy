@@ -3,8 +3,8 @@ import type { Response } from 'express';
 
 type ErrorType = Error | null;
 
-export function return_response(err: ErrorType, message: string, code: number, res: Response): Response {
-    console.log(err)
+export function return_response(_err: ErrorType, message: string, code: number, res: Response): Response {
+    
     switch (code) {
         case 500:
             return res.status(500).json({ error: message || 'Internal Server Error' });

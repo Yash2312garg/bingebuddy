@@ -1,12 +1,5 @@
-// const api = axios.create({
-//     baseURL: import.meta.env.VITE_BASE_URL,
-//     withCredentials: true
-// })
-
-// import { resolve } from "path";
 import { privateApi, publicApi } from "./api";
-// import { rejects } from "assert";
-// import { error } from "console";
+
 
 let isRefreshing = false;
 
@@ -45,7 +38,6 @@ export const setupInterceptors = () => {
         originalRequest._retry = true;
         isRefreshing = true;
         try {
-          // ✅ Use publicApi for refresh — avoids infinite intercept loop
           await publicApi.post("restaurant/refresh");
           processQueue(null);
           return privateApi(originalRequest); // retry original

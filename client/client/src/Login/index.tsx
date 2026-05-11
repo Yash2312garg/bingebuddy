@@ -7,7 +7,7 @@ import LoginCardLayout, {
   LoginCardLayoutHeading,
   LoginCardLayoutSubHeading,
 } from "./LoginCardLayout";
-import { sendOtpRequest } from "./utils";
+import { sendOtpRequest } from "../api/publicApi/login.publicApi";
 import Btn from "../Components/Buttons/Button";
 import { Input } from "../Components/Input/Input";
 import axios from "axios";

@@ -1,7 +1,7 @@
 import React,{useEffect} from "react";
 import Navbar from "../Navbar/Navbar";
 import "./PendingVerific.css"
-import { checkpreloginSession } from "./utils";
+import { checkpreloginSession } from "../api/publicApi/verifyotp.publicApi";
 import { useNavigate } from "react-router-dom";
 const PendingVerificationScreen:React.FC = ()=>{
     //check for the session if is still active or not. 
