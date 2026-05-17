@@ -1,0 +1,39 @@
+/* Container */
+.CheckLoginScreen-cntr{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    font-size: 1.5rem;
+    color: var(--Secondary-Text-Color);
+}
+
+/* Heading */
+.CheckLoginScreen-cntr h2{
+    color: var(--Primary-Text-Color);
+    font-size: 3rem;
+    margin: 0;
+}
+
+/* Loader */
+.round-loader{
+    width: 60px;
+    height: 60px;
+    border: 6px solid #e2e8f0;
+    border-top: 6px solid var(--Brand-Primary-Colors);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 24px;
+}
+
+/* Animation */
+@keyframes spin {
+    0%{
+        transform: rotate(0deg);
+    }
+    100%{
+        transform: rotate(360deg);
+    }
+}

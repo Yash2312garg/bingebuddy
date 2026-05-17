@@ -5,7 +5,6 @@ import "./StepThree.css";
 import { Input } from "../Components/Input/Input";
 import Btn from "../Components/Buttons/Button";
 import type { StepOneProps } from "../Types/PreLoginSteps";
-import InfoIcon from "../assets/Info.svg";
 import MapImage from "../assets/map.png";
 import { useState,useCallback,useEffect } from "react";
 import type { RestaurantAddress } from "../Types/PreLoginSteps";

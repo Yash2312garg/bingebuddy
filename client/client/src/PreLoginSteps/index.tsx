@@ -1,13 +1,11 @@
 import "./index.css";
-import React, { useState,useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Navbar from "../Navbar/Navbar";
 import StepOne from "./StepOne";
 import StepTwo from "./StepTwo";
 import StepThree from "./StepThree";
 import StepFour from "./StepFour";
 import type { PreloginDataInterface } from "../Types/PreLoginSteps";
-import { checkpreloginSession } from "../api/publicApi/verifyotp.publicApi";
-import { useNavigate } from "react-router-dom";
 const PreLoginSteps: React.FC = () => {
   const [step, setStep] = useState<number>(1);
   const [restaurantInfo, setResturantInfo] = useState<PreloginDataInterface>({
@@ -32,7 +30,6 @@ const PreLoginSteps: React.FC = () => {
     reference_id: ""
   });
 
-const navigate = useNavigate();
 
 const changeRestaurantDetails = (e: React.ChangeEvent<HTMLInputElement>) => {
   const { name, value } = e.target;
@@ -58,25 +55,7 @@ const setLogoAndRefeInformation = (value: string, type:"logo_url"|"full_img"|"re
     ...restaurantInfo,
     [type]: value
   })
-
 }
-
-  useEffect(()=>{
-    const checkSession = async()=>{
-        try{
-          const checkSession = await checkpreloginSession()
-        if (!checkSession.isActive){
-           navigate("/login")
-        }
-        }catch(e){
-          navigate("/login")
-        }     
-    }
-    checkSession()
-  },[])
-
-
-
 
   function setNextStep() {
     console.log(step);

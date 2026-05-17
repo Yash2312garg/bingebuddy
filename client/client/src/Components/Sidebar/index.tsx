@@ -1,31 +1,113 @@
 import React, { useState } from "react";
-import Btn from "../Buttons/Button";
 import "./index.css";
 import Logo from "../../assets/Logo/Logo.svg";
+import Accordian from "../Accordian";
+import type { AccordianItem } from "../../Types/Accordian";
 
-const OPTIONS = [
-  {
-    id: 0,
-    name: "Dashboard",
-    path: "/dashboard",
-  },
-  {
-    id: 1,
-    name: "Menu",
-    path: "/menu",
-  },
-  {
-    id: 2,
-    name: "Order History",
-    path: "/order-history",
-  },
-  {
-    id: 3,
-    name: "current Order",
-    path: "/current-order",
-  },
-];
 
+const DUMMY_DATA:AccordianItem[] = [
+    {
+        id: "1",
+        name: "dashbaoard",
+        label:"Dashboard",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+    {
+        id: "2",
+        name: "orders",
+        label:"Orders",
+        onClick: ()=>{console.log("clicked")},
+        children:[
+    {
+        id: "3",
+        name: "overview",
+        label:"Overview",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+        {
+        id: "4",
+        name: "new_orders",
+        label:"New Orders",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+
+        {
+        id: "5",
+        name: "active_orders",
+        label:"Active Orders",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+        {
+        id: "6",
+        name: "order_history",
+        label:"Order History",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+        ]
+    },
+        {
+        id: "7",
+        name: "analytics",
+        label:"Analytics",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+            {
+        id: "8",
+        name: "menus",
+        label:"Menus",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+            {
+        id: "9",
+        name: "categories",
+        label:"Categories",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+    {
+        id: "10",
+        name: "items",
+        label:"Items",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+            {
+        id: "11",
+        name: "add_ons",
+        label:"Add-ons",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+    {
+        id: "12",
+        name: "variants",
+        label:"Variants",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+    {
+        id: "13",
+        name: "combos",
+        label:"Combos",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+    {
+        id: "14",
+        name: "settings",
+        label:"Settings",
+        onClick: ()=>{console.log("clicked")},
+        children:[]
+    },
+
+]
 const Header: React.FC = () => {
   return (
     <div className="Sidebar-header">
@@ -35,20 +117,12 @@ const Header: React.FC = () => {
   );
 };
 
-const MenuOptions: React.FC = () => {
-  return (
-    <div className="Side-bar-Menu-options">
-      {OPTIONS.map((option) => {
-        return <span className="Side-bar-menu-option">{option.name}</span>;
-      })}
-    </div>
-  );
-};
+
 const Sidebar: React.FC = () => {
   return (
     <div className="Side-bar-wrapper">
       <Header />
-      <MenuOptions />
+      <Accordian options={DUMMY_DATA}/>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, {  useState } from "react";
 import type { AccordianItem,AccordianProps } from "../../Types/Accordian";
+import "./index.css"
 // const DUMMY_DATA:AccordianItem[] = [
 //     {
 //         id: "1",
@@ -115,12 +116,11 @@ const Accordian: React.FC<AccordianProps> = ({ options }) => {
   }
 
   return (
-    <div>
+    <div className="accordian-cntr">
       {options.map((item) => (
-        <div key={item.id} style={{ marginLeft: "10px" }}>
-          
+        <div key={item.id}  className="according-item-wrpr">
           <div
-            style={{ cursor: "pointer", fontWeight: "bold" }}
+            className="according-item-cntr"
             onClick={() => {
               toggleItem(item.id)
               item.onClick()

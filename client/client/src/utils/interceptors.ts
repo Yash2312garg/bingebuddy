@@ -38,7 +38,7 @@ export const setupInterceptors = () => {
         originalRequest._retry = true;
         isRefreshing = true;
         try {
-          await publicApi.post("restaurant/refresh");
+          await publicApi.post("auth/refresh");
           processQueue(null);
           return privateApi(originalRequest); // retry original
         } catch (refreshError) {

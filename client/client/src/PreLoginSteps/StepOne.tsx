@@ -9,38 +9,35 @@ import type { StepOneProps } from "../Types/PreLoginSteps";
 import { useCallback } from "react";
 import type { PreloginDataInterface } from "../Types/PreLoginSteps";
 
-
-
 const StepOne: React.FC<StepOneProps> = ({
   setNextSteps,
   changeRestaurantDetails,
   restaurantInfo,
 }) => {
   const navigate = useNavigate();
-  const [errors,setError] = useState({name: "",description: ""})
+  const [errors, setError] = useState({ name: "", description: "" });
   const validation = useCallback((info: PreloginDataInterface) => {
-  const newErrors = {
-    name: "",
-    description: ""
-  };
+    const newErrors = {
+      name: "",
+      description: "",
+    };
 
-  if (!info.name.trim()) {
-    newErrors.name = "Name is empty";
-  }
+    if (!info.name.trim()) {
+      newErrors.name = "Name is empty";
+    }
 
-  if (!info.description.trim()) {
-    newErrors.description = "Description is empty";
-  }
+    if (!info.description.trim()) {
+      newErrors.description = "Description is empty";
+    }
 
-  setError(newErrors);
-  return newErrors;
-}, []);
-  console.log(errors)
-  useEffect(()=>{
-    validation(restaurantInfo)
-  },[restaurantInfo])
+    setError(newErrors);
+    return newErrors;
+  }, []);
+  // console.log(errors)
+  useEffect(() => {
+    validation(restaurantInfo);
+  }, [restaurantInfo]);
 
-  
   return (
     <>
       <StepModal>
@@ -79,7 +76,7 @@ const StepOne: React.FC<StepOneProps> = ({
               onClick={() => {
                 setNextSteps();
               }}
-              disabled={errors.description!==""|| errors.name!==""}
+              disabled={errors.description !== "" || errors.name !== ""}
             >
               Next
             </Btn>

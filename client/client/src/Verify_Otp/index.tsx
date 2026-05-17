@@ -13,13 +13,14 @@ import { useNavigate } from "react-router-dom";
 import {
   verifyOTPUtils,
   resendOTPUtils,
-  checkpreloginSession,
   fetchOtpStatus,
 } from "../api/publicApi/verifyotp.publicApi";
+
 import axios from "axios";
 import { useAppDispatch } from "../hooks/redux";
 import { getRestaurantInfo } from "../api/privateApi/getRestaurantInfo.privateApi";
 import { setUser } from "../slices/authSlice";
+import { checkpreloginSession } from "../api/publicApi/prelogin.publicApi";
 
 interface RequestOTPError {
   status: number;

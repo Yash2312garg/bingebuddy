@@ -7,7 +7,7 @@
     gap: 2px;
     height:100vh;
     box-sizing: border-box; 
-    width: 20vw;
+    width: 15vw;
     min-width: 200px;
     border-bottom: 1px solid var(--Trace-Grey-Color);
     min-width: fit-content;
@@ -19,7 +19,6 @@
     width: 100%;
     padding: 10px 20px;
     box-sizing: border-box;
-
     border-right: 1px solid var(--Trace-Grey-Color);
 }
 .Sidebar-header p{
