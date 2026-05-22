@@ -3,22 +3,27 @@ const fs = require('fs');
 const path = require('path');
 const { GoogleGenAI } = require('@google/genai');
 
+// 1. Updated instructions enforcing relative paths matching your exact style
 const SYSTEM_INSTRUCTIONS = `
 You are an expert backend QA automation engineer specialized in Express.js and TypeScript.
 Your job is to generate highly accurate, pure TypeScript Jest unit tests for the provided MVC target code.
 You MUST write complete tests that require ZERO external dependencies or running databases.
 
+CRITICAL RELATIVE IMPORT RULE:
+You must use standard relative paths to import modules. 
+To help you, the prompt provides an exact string called 'RELATIVE_PATH_TO_SRC'. You MUST use this exact prefix whenever you import any file from the root 'src/' tree.
+
+For example, if RELATIVE_PATH_TO_SRC is '../../../../src/', then:
+- To import the controller under test: import { getRestaurantInformation } from '../../../../src/controllers/user/user.controller';
+- To import a model: import { getRestaurantinfo } from '../../../../src/models/auth/auth.model';
+- To import a DAO: import { RestaurantDao } from '../../../../src/dao/restaurant.dao';
+
 Strict Mocking Matrix Rules (TypeScript Syntax):
 1. Native PostgreSQL Pool: Mock your DB pool connection module completely.
-   Example: 
-   import pool from '../config/db';
-   jest.mock('../config/db', () => ({ query: jest.fn() }));
 2. Redis Cache: Mock the implementation of get/set calls.
-   Example: jest.mock('../config/redis', () => ({ get: jest.fn(), set: jest.fn() }));
-3. AWS S3: Mock the '@aws-sdk/client-s3' Send command wrapper. Do not call real AWS.
+3. AWS S3: Mock the '@aws-sdk/client-s3' Send command wrapper.
 4. Express: Mock 'Request' and 'Response' types using jest.fn() for res.status, res.json, and res.send.
 
-Ensure all file relative paths back to the source 'src/' are exact, type-safe, and calculated according to the target file placement.
 Do not wrap your output code in markdown code blocks inside the JSON string.
 `;
 
@@ -33,7 +38,6 @@ async function run() {
   console.log("Analyzing git repository changes...");
   let changedFiles = [];
   try {
-    // 1. Trace changes specifically inside server/src/
     changedFiles = execSync('git diff --name-only HEAD~1 HEAD')
       .toString()
       .trim()
@@ -55,20 +59,23 @@ async function run() {
 
   for (const file of changedFiles) {
     // Go up 3 levels to reach the true monorepo root (ai-runner -> scripts -> server -> root)
-    const absoluteGitRootPath = path.resolve(__dirname, '../../..', file);
+    const absoluteGitRootPath = path.resolve(__dirname, '../../..', file); 
     console.log(`Processing file: ${file}`);
     const codeContent = fs.readFileSync(absoluteGitRootPath, 'utf8');
 
-    // Strip 'server/' prefix for localized path generation
     const localizedServerPath = file.replace('server/', '');
 
-    // Calculate structural relative path jumps dynamically for TypeScript imports
-    const depth = localizedServerPath.split('/').length - 1;
-    const relativePathPrefix = '../'.repeat(depth) + 'src/';
+    // 2. FIXED PATH MATH: Calculate depth based on the final generated test file location
+    const mirrorPath = localizedServerPath.replace('src/', 'tests/ai-generated/').replace('.ts', '.test.ts');
+    const testFolderDepth = mirrorPath.split('/').length - 1; // Counts total parent folders
+    const relativePathToSrc = '../'.repeat(testFolderDepth) + 'src/';
 
+    // 3. Hand the exact pre-calculated string shortcut to Gemini
     const prompt = `
       Target TypeScript file layout location: ${localizedServerPath}
-      Relative access path back to root src is: ${relativePathPrefix}
+      Target Test file will be saved at: ${mirrorPath}
+      
+      CRITICAL: Whenever importing from the 'src/' tree, you MUST use this exact prefix string: ${relativePathToSrc}
       
       Review the following TypeScript component code and construct the unit testing configuration matching our architecture specifications:
       \`\`\`typescript
@@ -77,7 +84,6 @@ async function run() {
     `;
 
     try {
-      // 2. Query Gemini utilizing strict structured JSON constraints
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
@@ -87,13 +93,9 @@ async function run() {
           responseSchema: {
             type: "OBJECT",
             properties: {
-              testCode: { 
-                type: "STRING", 
-                description: "Executable, complete TypeScript Jest test code including all mocks." 
-              },
+              testCode: { type: "STRING" },
               criticalityReport: {
                 type: "ARRAY",
-                description: "List of found code problems and vulnerabilities mapped by structural severity.",
                 items: {
                   type: "OBJECT",
                   properties: {
@@ -111,9 +113,6 @@ async function run() {
       });
 
       const result = JSON.parse(response.text);
-
-      // 3. Mirror paths cleanly within server/tests/ai-generated/ using .test.ts extension
-      const mirrorPath = localizedServerPath.replace('src/', 'tests/ai-generated/').replace('.ts', '.test.ts');
       
       fs.mkdirSync(path.dirname(mirrorPath), { recursive: true });
       fs.writeFileSync(mirrorPath, result.testCode, 'utf8');
