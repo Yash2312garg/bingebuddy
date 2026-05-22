@@ -1,28 +1,27 @@
-import type {Config} from "jest";
-import {createDefaultPreset} from "ts-jest";
-
+import type { Config } from "jest";
+import { createDefaultPreset } from "ts-jest";
 
 const tsJestTransformCfg = createDefaultPreset().transform;
 
-
 const config: Config = {
   testEnvironment: "node",
-  transform :{
+  transform: {
     ...tsJestTransformCfg
   },
-  testMatch:[
+  testMatch: [
     "<rootDir>/tests/unit/**/*.test.ts",
-  "<rootDir>/tests/integration/**/*.test.ts",
-  "<rootDir>/tests/api/**/*.test.ts",
+    "<rootDir>/tests/integration/**/*.test.ts",
+    "<rootDir>/tests/api/**/*.test.ts",
+    "<rootDir>/tests/ai-generated/**/*.test.ts" // 🎉 Added this line to include your AI tests
   ],
   testPathIgnorePatterns: [
-  "<rootDir>/node_modules/",
-  "<rootDir>/dist/",
-],
-setupFilesAfterEnv :[
-  "<rootDir>/tests/setup/jest.setup.ts"
-],
-moduleNameMapper: {
+    "<rootDir>/node_modules/",
+    "<rootDir>/dist/",
+  ],
+  setupFilesAfterEnv: [
+    "<rootDir>/tests/setup/jest.setup.ts"
+  ],
+  moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   // collectCoverageFrom: [
@@ -41,12 +40,12 @@ moduleNameMapper: {
   //     statements: 80,
   //   },
   // },
-    clearMocks: true,
+  clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
 
   // ✅ Show individual test names in output
   verbose: true,
-
 }
+
 export default config;
