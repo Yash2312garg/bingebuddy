@@ -50,15 +50,16 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          if [ -n "$(git status --porcelain server/tests/ai-generated)" ]; then
-            git add server/tests/ai-generated/
-            git commit -m "chore(testing): auto-generated TypeScript unit tests [skip ci]"
+          # Check the entire tests/ directory for both new test suites and new Jira tickets
+          if [ -n "$(git status --porcelain server/tests)" ]; then
+            git add server/tests/
+            git commit -m "chore(testing): auto-generated TypeScript unit tests & bug tickets [skip ci]"
             
-            # Wipes out any temporary package-lock or cache noise, keeping our new commit pristine
+            # Clear out runtime locks/node caches, keeping our new tests and tickets safe
             git reset --hard HEAD 
             
             git pull --rebase origin development
             git push origin development
           else
-            echo "No new TypeScript unit tests generated to commit."
+            echo "No new TypeScript testing artifacts generated to commit."
           fi
