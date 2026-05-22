@@ -1,131 +1,104 @@
 import { Request, Response } from 'express';
 import { getRestaurantInformation } from '../../../../src/controllers/user/user.controller';
-import { getRestaurantinfo as mockGetRestaurantInfo } from '../../../../src/models/auth/auth.model';
-import { RestaurantDao as MockRestaurantDao } from '../../../../src/dao/restaurant.dao';
+import { getRestaurantinfo } from '../../../../src/models/auth/auth.model';
+import { RestaurantDao } from '../../../../src/dao/restaurant.dao';
 
-// Mock the auth model and DAO
-jest.mock('../../../../src/models/auth/auth.model', () => ({
-  getRestaurantinfo: jest.fn(),
-}));
-jest.mock('../../../../src/dao/restaurant.dao', () => ({
-  RestaurantDao: {
-    getRestaurantData: jest.fn(),
-    saveRestaurantData: jest.fn(),
-  },
-}));
+jest.mock('../../../../src/models/auth/auth.model');
+jest.mock('../../../../src/dao/restaurant.dao');
+
+const mockGetRestaurantinfo = getRestaurantinfo as jest.Mock;
+const mockGetRestaurantData = RestaurantDao.getRestaurantData as jest.Mock;
+const mockSaveRestaurantData = RestaurantDao.saveRestaurantData as jest.Mock;
 
 describe('getRestaurantInformation', () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
-  let jsonMock: jest.Mock;
-  let statusMock: jest.Mock;
+    let mockRequest: Partial<Request>;
+    let mockResponse: Partial<Response>;
+    let statusSpy: jest.Mock;
+    let jsonSpy: jest.Mock;
 
-  const restaurantRedisData = {
-    id: 'res123',
-    name: 'Test Restaurant (Redis)',
-    address: '123 Redis St',
-  };
+    beforeEach(() => {
+        statusSpy = jest.fn().mockReturnThis();
+        jsonSpy = jest.fn();
+        mockRequest = {};
+        mockResponse = {
+            status: statusSpy,
+            json: jsonSpy,
+        };
+        jest.clearAllMocks();
+    });
 
-  const restaurantDbData = {
-    id: 'res123',
-    name: 'Test Restaurant (DB)',
-    address: '456 DB Ave',
-    phone: '555-1234',
-  };
+    it('should return 401 if user is not authenticated', async () => {
+        mockRequest.user = undefined;
+        await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
 
-  beforeEach(() => {
-    jsonMock = jest.fn();
-    statusMock = jest.fn().mockReturnThis(); // Allows chaining .status().json()
-    mockResponse = {
-      status: statusMock,
-      json: jsonMock,
-    };
-    mockRequest = {};
+        expect(statusSpy).toHaveBeenCalledWith(401);
+        expect(jsonSpy).toHaveBeenCalledWith({ message: 'Unauthorized' });
+        expect(mockGetRestaurantData).not.toHaveBeenCalled();
+        expect(mockGetRestaurantinfo).not.toHaveBeenCalled();
+    });
 
-    // Clear all mocks before each test
-    (mockGetRestaurantInfo as jest.Mock).mockClear();
-    (MockRestaurantDao.getRestaurantData as jest.Mock).mockClear();
-    (MockRestaurantDao.saveRestaurantData as jest.Mock).mockClear();
-  });
+    it('should return restaurant data from redis cache if available', async () => {
+        const mockUser = { reference_id: 'user123' };
+        const mockRestaurantData = { id: 1, name: 'Test Restaurant' };
+        mockRequest.user = mockUser;
 
-  it('should return 401 if user is not authenticated', async () => {
-    mockRequest.user = undefined;
+        mockGetRestaurantData.mockResolvedValue(mockRestaurantData);
 
-    await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
+        await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
 
-    expect(statusMock).toHaveBeenCalledWith(401);
-    expect(jsonMock).toHaveBeenCalledWith({ message: 'Unauthorized' });
-    expect(MockRestaurantDao.getRestaurantData).not.toHaveBeenCalled();
-    expect(mockGetRestaurantInfo).not.toHaveBeenCalled();
-  });
+        expect(mockGetRestaurantData).toHaveBeenCalledWith(mockUser.reference_id);
+        expect(statusSpy).toHaveBeenCalledWith(200);
+        expect(jsonSpy).toHaveBeenCalledWith({ message: 'sucessfull', restaurantData: mockRestaurantData });
+        expect(mockGetRestaurantinfo).not.toHaveBeenCalled();
+        expect(mockSaveRestaurantData).not.toHaveBeenCalled();
+    });
 
-  it('should return restaurant data from Redis if available', async () => {
-    mockRequest.user = { reference_id: 'user_ref_123' };
-    (MockRestaurantDao.getRestaurantData as jest.Mock).mockResolvedValueOnce(restaurantRedisData);
+    it('should fetch from DB, save to cache, and return data if redis cache is empty', async () => {
+        const mockUser = { reference_id: 'user123' };
+        const mockRestaurantDataFromDb = { id: 2, name: 'DB Restaurant' };
+        mockRequest.user = mockUser;
 
-    await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
+        mockGetRestaurantData.mockResolvedValue(null);
+        mockGetRestaurantinfo.mockResolvedValue(mockRestaurantDataFromDb);
+        mockSaveRestaurantData.mockResolvedValue(undefined); // Mock save operation
 
-    expect(MockRestaurantDao.getRestaurantData).toHaveBeenCalledWith('user_ref_123');
-    expect(statusMock).toHaveBeenCalledWith(200);
-    expect(jsonMock).toHaveBeenCalledWith({ message: 'sucessfull', restaurantData: restaurantRedisData });
-    expect(mockGetRestaurantInfo).not.toHaveBeenCalled(); // Should not hit DB
-    expect(MockRestaurantDao.saveRestaurantData).not.toHaveBeenCalled(); // Should not save to Redis again
-  });
+        await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
 
-  it('should fetch from DB, save to Redis, and return data if not in Redis', async () => {
-    mockRequest.user = { reference_id: 'user_ref_123' };
-    (MockRestaurantDao.getRestaurantData as jest.Mock).mockResolvedValueOnce(null); // Not found in Redis
-    (mockGetRestaurantInfo as jest.Mock).mockResolvedValueOnce(restaurantDbData); // Found in DB
+        expect(mockGetRestaurantData).toHaveBeenCalledWith(mockUser.reference_id);
+        expect(mockGetRestaurantinfo).toHaveBeenCalledWith(mockUser.reference_id);
+        expect(mockSaveRestaurantData).toHaveBeenCalledWith(mockUser.reference_id, mockRestaurantDataFromDb);
+        expect(statusSpy).toHaveBeenCalledWith(200);
+        expect(jsonSpy).toHaveBeenCalledWith({ message: 'sucessfull', restaurantData: mockRestaurantDataFromDb });
+    });
 
-    await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
+    it('should return 503 if restaurant details cannot be fetched from DB', async () => {
+        const mockUser = { reference_id: 'user123' };
+        mockRequest.user = mockUser;
 
-    expect(MockRestaurantDao.getRestaurantData).toHaveBeenCalledWith('user_ref_123');
-    expect(mockGetRestaurantInfo).toHaveBeenCalledWith('user_ref_123'); // Should hit DB
-    expect(MockRestaurantDao.saveRestaurantData).toHaveBeenCalledWith('user_ref_123', restaurantDbData); // Should save to Redis
-    expect(statusMock).toHaveBeenCalledWith(200);
-    expect(jsonMock).toHaveBeenCalledWith({ message: 'sucessfull', restaurantData: restaurantDbData });
-  });
+        mockGetRestaurantData.mockResolvedValue(null);
+        mockGetRestaurantinfo.mockResolvedValue(null);
 
-  it('should return 503 if data not in Redis and not found in DB', async () => {
-    mockRequest.user = { reference_id: 'user_ref_123' };
-    (MockRestaurantDao.getRestaurantData as jest.Mock).mockResolvedValueOnce(null); // Not found in Redis
-    (mockGetRestaurantInfo as jest.Mock).mockResolvedValueOnce(null); // Not found in DB
+        await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
 
-    await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
+        expect(mockGetRestaurantData).toHaveBeenCalledWith(mockUser.reference_id);
+        expect(mockGetRestaurantinfo).toHaveBeenCalledWith(mockUser.reference_id);
+        expect(mockSaveRestaurantData).not.toHaveBeenCalled(); // Should not try to save null data
+        expect(statusSpy).toHaveBeenCalledWith(503);
+        expect(jsonSpy).toHaveBeenCalledWith({ message: 'Error fetching restaurant details' });
+    });
 
-    expect(MockRestaurantDao.getRestaurantData).toHaveBeenCalledWith('user_ref_123');
-    expect(mockGetRestaurantInfo).toHaveBeenCalledWith('user_ref_123');
-    expect(MockRestaurantDao.saveRestaurantData).toHaveBeenCalledWith('user_ref_123', null); // saveRestaurantData is called even if userCompleteData is null
-    expect(statusMock).toHaveBeenCalledWith(503);
-    expect(jsonMock).toHaveBeenCalledWith({ message: 'Error fetching restaurant details' });
-  });
+    it('should return 500 if an unexpected error occurs', async () => {
+        const mockUser = { reference_id: 'user123' };
+        mockRequest.user = mockUser;
 
-  it('should return 500 if an error occurs during data fetching', async () => {
-    mockRequest.user = { reference_id: 'user_ref_123' };
-    const errorMessage = 'Database connection error';
-    (MockRestaurantDao.getRestaurantData as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+        mockGetRestaurantData.mockRejectedValue(new Error('Database connection failed'));
 
-    await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
+        await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
 
-    expect(MockRestaurantDao.getRestaurantData).toHaveBeenCalledWith('user_ref_123');
-    expect(mockGetRestaurantInfo).not.toHaveBeenCalled(); // Error before hitting DB
-    expect(MockRestaurantDao.saveRestaurantData).not.toHaveBeenCalled();
-    expect(statusMock).toHaveBeenCalledWith(500);
-    expect(jsonMock).toHaveBeenCalledWith({ message: 'Internal Server Error' });
-  });
-
-  it('should return 500 if an error occurs while fetching from DB', async () => {
-    mockRequest.user = { reference_id: 'user_ref_123' };
-    const errorMessage = 'DB query failed';
-    (MockRestaurantDao.getRestaurantData as jest.Mock).mockResolvedValueOnce(null); // Not found in Redis
-    (mockGetRestaurantInfo as jest.Mock).mockRejectedValueOnce(new Error(errorMessage)); // Error from DB model
-
-    await getRestaurantInformation(mockRequest as Request, mockResponse as Response);
-
-    expect(MockRestaurantDao.getRestaurantData).toHaveBeenCalledWith('user_ref_123');
-    expect(mockGetRestaurantInfo).toHaveBeenCalledWith('user_ref_123');
-    expect(MockRestaurantDao.saveRestaurantData).not.toHaveBeenCalled(); // Error before saving
-    expect(statusMock).toHaveBeenCalledWith(500);
-    expect(jsonMock).toHaveBeenCalledWith({ message: 'Internal Server Error' });
-  });
+        expect(mockGetRestaurantData).toHaveBeenCalledWith(mockUser.reference_id);
+        expect(statusSpy).toHaveBeenCalledWith(500);
+        expect(jsonSpy).toHaveBeenCalledWith({ message: 'Internal Server Error' });
+        expect(mockGetRestaurantinfo).not.toHaveBeenCalled();
+        expect(mockSaveRestaurantData).not.toHaveBeenCalled();
+    });
 });
