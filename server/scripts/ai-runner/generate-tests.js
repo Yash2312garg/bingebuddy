@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const { GoogleGenAI } = require('@google/genai');
 
-// 1. Updated instructions enforcing relative paths matching your exact style
 const SYSTEM_INSTRUCTIONS = `
 You are an expert backend QA automation engineer specialized in Express.js and TypeScript.
 Your job is to generate highly accurate, pure TypeScript Jest unit tests for the provided MVC target code.
@@ -26,6 +25,9 @@ Strict Mocking Matrix Rules (TypeScript Syntax):
 
 Do not wrap your output code in markdown code blocks inside the JSON string.
 `;
+
+// Helper function to force the script to pause
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function run() {
   if (!process.env.GEMINI_API_KEY) {
@@ -58,19 +60,15 @@ async function run() {
   console.log(`Detected changes across target source targets: \n${changedFiles.join('\n')}\n`);
 
   for (const file of changedFiles) {
-    // Go up 3 levels to reach the true monorepo root (ai-runner -> scripts -> server -> root)
     const absoluteGitRootPath = path.resolve(__dirname, '../../..', file); 
     console.log(`Processing file: ${file}`);
     const codeContent = fs.readFileSync(absoluteGitRootPath, 'utf8');
 
     const localizedServerPath = file.replace('server/', '');
-
-    // 2. FIXED PATH MATH: Calculate depth based on the final generated test file location
     const mirrorPath = localizedServerPath.replace('src/', 'tests/ai-generated/').replace('.ts', '.test.ts');
-    const testFolderDepth = mirrorPath.split('/').length - 1; // Counts total parent folders
+    const testFolderDepth = mirrorPath.split('/').length - 1; 
     const relativePathToSrc = '../'.repeat(testFolderDepth) + 'src/';
 
-    // 3. Hand the exact pre-calculated string shortcut to Gemini
     const prompt = `
       Target TypeScript file layout location: ${localizedServerPath}
       Target Test file will be saved at: ${mirrorPath}
@@ -83,35 +81,61 @@ async function run() {
       \`\`\`
     `;
 
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTIONS,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              testCode: { type: "STRING" },
-              criticalityReport: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    issue: { type: "STRING" },
-                    criticality: { type: "STRING", enum: ["CRITICAL", "MEDIUM", "LOW"] },
-                    description: { type: "STRING" }
-                  },
-                  required: ["issue", "criticality", "description"]
-                }
-              }
-            },
-            required: ["testCode", "criticalityReport"]
-          }
-        }
-      });
+    // --- Dynamic Retry Loop Configuration ---
+    let response = null;
+    const maxAttempts = 3;
+    let currentDelay = 3000; // Start with a 3-second delay if it fails
 
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTIONS,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                testCode: { type: "STRING" },
+                criticalityReport: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      issue: { type: "STRING" },
+                      criticality: { type: "STRING", enum: ["CRITICAL", "MEDIUM", "LOW"] },
+                      description: { type: "STRING" }
+                    },
+                    required: ["issue", "criticality", "description"]
+                  }
+                }
+              },
+              required: ["testCode", "criticalityReport"]
+            }
+          }
+        });
+        
+        // If we reach this point, the API call succeeded! Break out of the retry loop.
+        break; 
+      } catch (apiError) {
+        console.warn(`⚠️ Attempt ${attempt} failed due to API limitations or high load.`);
+        
+        if (attempt === maxAttempts) {
+          console.error(`❌ Definitively failed executing inference block after ${maxAttempts} attempts.`);
+          continue; // Move on to the next file if everything fails
+        }
+        
+        console.log(`Pausing for ${currentDelay / 1000} seconds before retrying...`);
+        await sleep(currentDelay);
+        currentDelay *= 2; // Double the wait time for the next try (Exponential Backoff)
+      }
+    }
+
+    // If all retries failed and we have no response, skip processing for this file
+    if (!response) continue;
+
+    try {
       const result = JSON.parse(response.text);
       
       fs.mkdirSync(path.dirname(mirrorPath), { recursive: true });
@@ -121,9 +145,8 @@ async function run() {
       if (result.criticalityReport && result.criticalityReport.length > 0) {
         processAlerts(localizedServerPath, result.criticalityReport);
       }
-
-    } catch (apiError) {
-      console.error(`Failed executing inference block context for ${file}:`, apiError.message);
+    } catch (parseError) {
+      console.error(`Failed parsing structured JSON output for ${file}:`, parseError.message);
     }
   }
 }
