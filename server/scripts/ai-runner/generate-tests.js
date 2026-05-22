@@ -217,12 +217,14 @@ async function callGeminiWithRetry(ai, prompt, responseSchema) {
         }
       });
       return response;
-    } catch (apiError) {
-      console.warn(`⚠️ API attempt ${attempt} failed.`);
-      if (attempt === maxAttempts) {
-        console.error(`❌ Definitively failed calling Gemini API after ${maxAttempts} runs.`);
-        return null;
-      }
+} catch (apiError) {
+        // Added raw error output logging to reveal the exact reason for the failure
+        console.warn(`⚠️ API attempt ${attempt} failed. Reason: ${apiError.message || apiError}`);
+        
+        if (attempt === maxAttempts) {
+          console.error(`❌ Definitively failed calling Gemini API after ${maxAttempts} runs.`);
+          return null;
+        }
       console.log(`Pausing for ${currentDelay / 1000} seconds before retrying...`);
       await sleep(currentDelay);
       currentDelay *= 2;
