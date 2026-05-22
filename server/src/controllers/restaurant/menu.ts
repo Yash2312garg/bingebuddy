@@ -2,6 +2,7 @@ import { Request,Response } from "express"
 import { MenueRequestBody,
     CategoryRequestData,
     MenueItemsRequestData,
+    EditMenuBody,
     // ComboItemsRequestData
  } from "../../types/Restaurant/Menue.types"
 import { Menu } from "../../models/restaurant/restaurant_menu.model"
@@ -19,6 +20,84 @@ export const addMenu =async (req:Request, res:Response)=>{
     }catch(e){
         console.log(e)
         return res.status(500).json({msg:'Internal Server Error'})
+    }
+}
+
+export const deleteMenu = async (req:Request, res:Response)=>{
+    try{
+        const menu_id:string = req.query.menu_id as string;
+        console.log(menu_id)
+        const success:boolean = await Menu.deleteMenu(Number(menu_id));
+        if(success){
+            return res.status(201).json({"msg": "succesfully deleted"})
+        }
+        return res.status(503).json({"msg": "service unavailable"})
+    }catch(e){
+        console.log("error while deleting menu", e)
+        return res.status(500).json({msg:'Internal Server Error'})
+    }
+}
+
+interface MenuStatusBody{
+    menu_id: number;
+    status: boolean;
+}
+export const changeMenuStatus = async (req:Request, res:Response)=>{
+    try{    
+        const data:MenuStatusBody = req.body;
+        console.log("changeMenuStatus",data)
+        const success:boolean = await Menu.changeMenuStatus(Boolean(data.status),data.menu_id);
+        if(success){
+            return res.status(200).json({"msg": "succesfully changed the status"})   
+        }
+        return res.status(503).json({"msg": "service unavailable"})
+
+    }catch(e){
+        console.log(e)
+        return res.status(500).json({msg:'Internal Server Error'})
+    }
+
+}
+export const editMenu = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const data: EditMenuBody = req.body;
+    console.log("editMenu",data)
+    const updatedMenu = await Menu.editMenu(data);
+    if (updatedMenu) {
+      return res.status(200).json({
+        msg: "Successfully updated menu",
+        data: updatedMenu,
+      });
+    }
+
+    return res.status(404).json({
+      msg: "Menu not found",
+    });
+
+  } catch (e) {
+    console.log("Error while editing menu", e);
+
+    return res.status(500).json({
+      msg: "Internal Server Error",
+    });
+  }
+};
+export const getAllMenu = async(req:Request,res:Response)=>{
+    try{
+        const restaurant_id = req.query.restaurant_id as string;
+        if(restaurant_id){
+            const AllMenus = await Menu.getAllMenu(Number(restaurant_id))
+            return res.status(200).json({msg:'Menus',data: AllMenus})
+
+        }
+        return res.status(400).json({msg:'Bad Request'})
+
+    }catch(e){
+        return res.status(500).json({msg:'Internal Server Error'})
+        
     }
 }
 export const addCategory = async (req:Request, res:Response)=>{

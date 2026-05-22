@@ -9,6 +9,17 @@ export interface MenueRequestBody{
     rules: null|JSON;
 }
 
+export interface EditMenuBody {
+    id: string;
+    name: string;
+    short_desc: string;
+    long_desc: string;
+    is_active: boolean;
+    available_from: string;
+    available_until: string;
+    rules: null|JSON;
+}
+
 export interface CategoryRequestData{
     menue_id: string;
     name:string;

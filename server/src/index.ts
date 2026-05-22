@@ -27,7 +27,7 @@ app.use( cors({
 )
 
 app.use("/restaurant/prelogin",restaurantPreLoginRoutes);
-app.use("/restaurant",restaurantMenuRoutes);
+app.use("/restaurant/menu",restaurantMenuRoutes);
 app.use("/auth", restaurantAuthRoutes)
 app.use("/restaurant/info",restaurantInfoRoutes) 
 

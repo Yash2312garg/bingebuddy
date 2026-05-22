@@ -1,9 +1,12 @@
 import { pool } from "../../database/db";
 import {
   CategoryRequestData,
+  EditMenuBody,
   MenueItemsRequestData,
   MenueRequestBody,
 } from "../../types/Restaurant/Menue.types";
+
+
 
 export class Menu {
   static async addNewMenue(new_menue_data: MenueRequestBody) {
@@ -15,7 +18,8 @@ export class Menu {
                     available_from, 
                     available_until, 
                     rules)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING *;`;
 
     const values = [
       new_menue_data.restaurant_id,
@@ -27,14 +31,107 @@ export class Menu {
       this.convert_string_to_time(new_menue_data.available_until),
       new_menue_data.rules || {},
     ];
-    const rows = await pool.query(query, values);
-    if (rows) {
-      return rows;
-    } else {
-      return null;
+
+    console.log({ values: values, requestBody: new_menue_data });
+    const result = await pool.query(query, values);
+    console.log(result);
+    if (result.rowCount && result.rowCount > 0) {
+      return result.rows[0];
     }
+    return null;
   }
 
+  static async deleteMenu(menu_id:number){
+    const query = `DELETE from menu where id = $1`
+    const value = [menu_id]
+    const result = await pool.query(query,value);
+    if (result.rowCount && result.rowCount>0){
+      return true
+    }
+    return false
+  }
+
+
+  static async changeMenuStatus(status:boolean, menu_id:number){
+    const query = `
+      UPDATE menu set is_active = $1 where id = $2`;
+    const value = [status,menu_id]
+    const result = await pool.query(query,value);
+    
+    if (result.rowCount && result.rowCount>0){
+      return true
+    }
+    return false
+  }
+
+
+static async editMenu(data: EditMenuBody) {
+  const query = `
+    UPDATE menu
+    SET
+      name = $1,
+      short_desc = $2,
+      long_desc = $3,
+      is_active = $4,
+      available_from = $5,
+      available_until = $6,
+      rules = $7,
+      updated_at = NOW()
+    WHERE id = $8
+    RETURNING
+      id,
+      name,
+      short_desc,
+      long_desc,
+      is_active,
+      available_from,
+      available_until,
+      rules,
+      created_at,
+      updated_at
+  `;
+
+  const values = [
+    data.name,
+    data.short_desc || "",
+    data.long_desc || "",
+    data.is_active,
+    this.convert_string_to_time(data.available_from),
+    this.convert_string_to_time(data.available_until),
+    data.rules || {},
+    data.id,
+  ];
+
+  const result = await pool.query(query, values);
+
+  if (result.rowCount && result.rowCount > 0) {
+    return result.rows[0];
+  }
+
+  return null;
+}
+
+  static async getAllMenu(restaurant_id: number) {
+    const query = `
+    SELECT 
+      id,
+      name,
+      short_desc,
+      long_desc,
+      is_active,
+      available_from,
+      available_until,
+      rules
+    FROM menu
+    WHERE restaurant_id = $1
+  `;
+
+    const values = [restaurant_id];
+
+    const result = await pool.query(query, values);
+
+    return result.rows;
+  }
   static async addNewCategory(new_category_data: CategoryRequestData) {
     const query = `INSERT INTO categories (
                     menue_id,
@@ -63,8 +160,8 @@ export class Menu {
     }
   }
 
-  static async addNewMenueItems(new_item_data: MenueItemsRequestData){
-        const query = `INSERT INTO menue_items (
+  static async addNewMenueItems(new_item_data: MenueItemsRequestData) {
+    const query = `INSERT INTO menue_items (
             category_id, 
             name,
             short_desc,
@@ -76,31 +173,30 @@ export class Menu {
             prep_time,
             tags,
             img_url,
-            )`
-        const values = [
-            new_item_data.category_id,
-            new_item_data.name,
-            new_item_data.short_desc,
-            new_item_data.long_desc,
-            new_item_data.is_available,
-            new_item_data.is_veg,
-            new_item_data.spice_level,
-            new_item_data.prep_time,
-            new_item_data.tags||{},
-            new_item_data.img_url || ""
-        ]
-        const data = await pool.query(query,values)
+            )`;
+    const values = [
+      new_item_data.category_id,
+      new_item_data.name,
+      new_item_data.short_desc,
+      new_item_data.long_desc,
+      new_item_data.is_available,
+      new_item_data.is_veg,
+      new_item_data.spice_level,
+      new_item_data.prep_time,
+      new_item_data.tags || {},
+      new_item_data.img_url || "",
+    ];
+    const data = await pool.query(query, values);
 
-        if(data.rowCount>0){
-            return data.rows
-        }else{
-            null
-        }
-        
+    if (data.rowCount > 0) {
+      return data.rows;
+    } else {
+      null;
+    }
   }
 
-    static async  createNewCombos(combo_data:any){
-        const query = `INSERT INTO combos(
+  static async createNewCombos(combo_data: any) {
+    const query = `INSERT INTO combos(
         category_id,
         name,
         short_desc,
@@ -108,29 +204,28 @@ export class Menu {
         base_price,
         is_available,
         max_items,
-        min_items) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`; 
-        const values= [
-combo_data.category_id,
-combo_data.name,
-combo_data.short_desc,
-combo_data.long_desc,
-combo_data.base_price,
-combo_data.is_available,
-combo_data.max_items,
-combo_data.min_items
-        ]
+        min_items) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
+    const values = [
+      combo_data.category_id,
+      combo_data.name,
+      combo_data.short_desc,
+      combo_data.long_desc,
+      combo_data.base_price,
+      combo_data.is_available,
+      combo_data.max_items,
+      combo_data.min_items,
+    ];
 
-        const result = pool.query(query,values);
-        if(result.rowCount> 1){
-            return result.rows[1]
-        }else{
-            return null
-        }
-
+    const result = pool.query(query, values);
+    if (result.rowCount > 1) {
+      return result.rows[1];
+    } else {
+      return null;
     }
-//   static async addAddons(new_addin_data:){
+  }
+  //   static async addAddons(new_addin_data:){
 
-//   }
+  //   }
 
   static async checkExistingMenuByid(menu_id: string) {
     if (!menu_id) {
@@ -143,8 +238,6 @@ combo_data.min_items
     return result.rowCount > 0;
   }
 
-  
-
   static async checkExistingCategoryByid(category_id: string) {
     if (!category_id) {
       throw new Error("No Category id Found");
@@ -156,8 +249,8 @@ combo_data.min_items
     return result.rowCount > 0;
   }
 
-  private static convert_string_to_time(timeString: String) {
-    if (timeString === "" || null) {
+  private static convert_string_to_time(timeString: string) {
+    if (!timeString) {
       return null;
     }
     const date = new Date(`1970-01-01 ${timeString}`);
