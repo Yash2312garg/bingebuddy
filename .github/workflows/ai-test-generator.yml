@@ -1,7 +1,7 @@
-name: Phase 1 AI Unit Test Generator (Monorepo TypeScript)
+name: Phase 3 CI/CD Gatekeeper & Quality Engine
 
 on:
-  push:
+  pull_request:
     branches:
       - development
 
@@ -14,52 +14,46 @@ defaults:
     working-directory: ./server
 
 jobs:
-  run-ai-tester:
+  run-quality-gate:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0 # Fetches full history so git diff tracks branches safely
 
       - name: Initialize Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
-          cache-dependency-path: './server/package-lock.json' # Exact lockfile location
+          cache-dependency-path: './server/package-lock.json'
 
       - name: Install Project Dependencies
         run: |
           npm install
           npm install @google/genai --save-dev
 
-      - name: Execute Diff Analysis & Generate Tests
+      - name: Execute Quality Gates & Jira Orchestration
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JIRA_DOMAIN: ${{ secrets.JIRA_DOMAIN }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+        # The orchestrator handles Jest natively. If a bug is found, it throws exit 1 here to block the PR.
         run: node scripts/ai-runner/generate-tests.js
 
-      - name: Run Global Test Suite
-        run: npm test -- --passWithNoTests || true
-
-      - name: Commit & Push Tests Back to Repository
+      - name: Commit Approved Tests Back to PR Branch
+        if: success()
         run: |
           cd ..
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Check the entire tests/ directory for both new test suites and new Jira tickets
-          if [ -n "$(git status --porcelain server/tests)" ]; then
-            git add server/tests/
-            git commit -m "chore(testing): auto-generated TypeScript unit tests & bug tickets [skip ci]"
-            
-            # Clear out runtime locks/node caches, keeping our new tests and tickets safe
-            git reset --hard HEAD 
-            
-            git pull --rebase origin development
-            git push origin development
-          else
-            echo "No new TypeScript testing artifacts generated to commit."
+          if [ -n "$(git status --porcelain server/tests/ai-generated)" ]; then
+            git add server/tests/ai-generated/
+            git commit -m "chore(testing): auto-generated verified unit tests [skip ci]"
+            git push origin HEAD:${{ github.head_ref }}
           fi
