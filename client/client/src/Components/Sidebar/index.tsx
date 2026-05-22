@@ -8,8 +8,8 @@ import type { AccordianItem } from "../../Types/Accordian";
 const DUMMY_DATA:AccordianItem[] = [
     {
         id: "1",
-        name: "dashbaoard",
-        label:"Dashboard",
+        name: "home",
+        label:"Home",
         onClick: ()=>{console.log("clicked")},
         children:[]
     },
@@ -59,7 +59,7 @@ const DUMMY_DATA:AccordianItem[] = [
     },
             {
         id: "8",
-        name: "menus",
+        name: "menu",
         label:"Menus",
         onClick: ()=>{console.log("clicked")},
         children:[]
@@ -89,7 +89,7 @@ const DUMMY_DATA:AccordianItem[] = [
         id: "12",
         name: "variants",
         label:"Variants",
-        onClick: ()=>{console.log("clicked")},
+        onClick: ()=>{},
         children:[]
     },
     {

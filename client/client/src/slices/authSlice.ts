@@ -1,18 +1,14 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
+import type { Restaurant } from "../Types/Restraurant";
 
-interface User {
-    email: string;
-    referenceId: string;
-    authStatus: boolean;   
-}
 
 interface AuthState {
-    user : User|null;
+    restaurant : Restaurant|null;
     isLoading: boolean
 }
 const initialState:AuthState = {
-    user:null,
+    restaurant:null,
     isLoading:true
 }
 
@@ -20,15 +16,15 @@ export const authSlice = createSlice({
     name: "auth",
     initialState: initialState,
     reducers: {
-        setUser:(state,action: PayloadAction<User|null>)=>{
-            state.user = action.payload;
+        setUser:(state,action: PayloadAction<Restaurant|null>)=>{
+            state.restaurant = action.payload;
         },
         setLoading: (state,action: PayloadAction<boolean>)=>{
             state.isLoading = action.payload
         },
         logoutUser: (state)=>{
             state.isLoading= false;
-            state.user = null
+            state.restaurant = null
         }
     }
 })

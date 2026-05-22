@@ -1,0 +1,15 @@
+.NoMenuSection-cntr{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.NoMenuSection-cntr span{
+    font-size: 1.2rem;
+    color: var( --Secondary-Text-Color);
+ }

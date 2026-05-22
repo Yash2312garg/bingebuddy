@@ -7,12 +7,11 @@
     gap: 2px;
     height:100vh;
     box-sizing: border-box; 
-    width: 15vw;
+    width: 24vw;
     min-width: 200px;
     border-bottom: 1px solid var(--Trace-Grey-Color);
     min-width: fit-content;
-    
-    
+    box-shadow: 4px 0 10px rgba(0, 0, 0, 0.06);
 }
 .Sidebar-header{
     border-bottom: 1px solid var(--Trace-Grey-Color);

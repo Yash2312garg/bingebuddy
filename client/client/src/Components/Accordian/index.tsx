@@ -1,6 +1,7 @@
 import React, {  useState } from "react";
 import type { AccordianItem,AccordianProps } from "../../Types/Accordian";
 import "./index.css"
+import { useNavigate } from "react-router-dom";
 // const DUMMY_DATA:AccordianItem[] = [
 //     {
 //         id: "1",
@@ -107,13 +108,24 @@ import "./index.css"
 
 const Accordian: React.FC<AccordianProps> = ({ options }) => {
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({})
-
+  const navigate = useNavigate();
   const toggleItem = (id: string) => {
     setOpenItems((prev) => ({
       ...prev,
       [id]: !prev[id]
     }))
   }
+    const handleClick = (item: AccordianItem) => {
+    // toggle children
+    if (item.children.length > 0) {
+      toggleItem(item.id);
+    }
+
+    // navigate if path exists
+    if (item.name) {
+      navigate("/"+item.name);
+    }
+  };
 
   return (
     <div className="accordian-cntr">
@@ -121,10 +133,7 @@ const Accordian: React.FC<AccordianProps> = ({ options }) => {
         <div key={item.id}  className="according-item-wrpr">
           <div
             className="according-item-cntr"
-            onClick={() => {
-              toggleItem(item.id)
-              item.onClick()
-            }}
+            onClick={()=>handleClick(item)}
           >
             {item.label}
           </div>

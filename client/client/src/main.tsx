@@ -7,7 +7,7 @@ import { Provider } from "react-redux";
 import { setupInterceptors } from "./utils/interceptors.ts";
 
 
-setupInterceptors()
+setupInterceptors(store)
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <Provider store={store}>

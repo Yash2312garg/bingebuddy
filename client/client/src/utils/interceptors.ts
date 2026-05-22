@@ -1,5 +1,6 @@
 import { privateApi, publicApi } from "./api";
-
+import type { AppStore } from "../store";
+import { logoutUser } from "../slices/authSlice";
 
 let isRefreshing = false;
 
@@ -7,6 +8,8 @@ let failedQueue: Array<{
   resolve: (value: unknown) => void;
   reject: (reason?: unknown) => void;
 }> = [];
+
+
 
 const processQueue = (error: unknown) => {
   failedQueue.forEach((process) => {
@@ -16,7 +19,7 @@ const processQueue = (error: unknown) => {
   failedQueue = [];
 };
 
-export const setupInterceptors = () => {
+export const setupInterceptors = (store:AppStore) => {
   privateApi.interceptors.response.use(
     (response) => response,
 
@@ -43,7 +46,8 @@ export const setupInterceptors = () => {
           return privateApi(originalRequest); // retry original
         } catch (refreshError) {
           processQueue(refreshError);
-          window.location.href = "/login"; // session fully expired
+          store.dispatch(logoutUser());
+          // window.location.href = "/login"; // session fully expired
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;

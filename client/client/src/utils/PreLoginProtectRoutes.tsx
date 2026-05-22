@@ -1,38 +1,14 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "../hooks/redux";
-import { useEffect } from "react";
-import { logoutUser, setLoading, setUser } from "../slices/authSlice";
-import { getRestaurantInfo } from "../api/privateApi/getRestaurantInfo.privateApi";
+import { useAppSelector } from "../hooks/redux";
 import CheckLoginScreen from "../CheckLoginScreen";
 
 export const PreLoginProtectRoutes: React.FC = () => {
-    const dispatch = useAppDispatch();
+  const restaurant = useAppSelector((state) => state.auth.restaurant);
+  const isLoading = useAppSelector((state) => state.auth.isLoading);
 
-    useEffect(()=>{
-        const initAuth = async()=>{
-            try{
-                const restaurantInfo = await getRestaurantInfo();
-                dispatch(setUser(restaurantInfo));
-                
-            }catch(err){
-                dispatch(logoutUser())
-            }finally{
-                dispatch(setLoading(false));
-            }
+  if (isLoading) return <CheckLoginScreen />;
 
-        }
-        initAuth();
-    })
+  if (restaurant) return <Navigate to="/home" replace />;
 
-    const user = useAppSelector((state) => state.auth.user);
-    const isLoading = useAppSelector((state)=>state.auth.isLoading);
-    // already authenticated
-    if (isLoading) return <CheckLoginScreen/>
-
-    if (user) {
-        return <Navigate to="/home" replace />;
-    }
-
-    // allow public pages
-    return <Outlet />;
+  return <Outlet />;
 };

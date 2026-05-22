@@ -1,38 +1,17 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "../hooks/redux";
-import { useEffect } from "react";
-import { getRestaurantInfo } from "../api/privateApi/getRestaurantInfo.privateApi";
-import { logoutUser, setLoading, setUser } from "../slices/authSlice";
+import { useAppSelector } from "../hooks/redux";
 import CheckLoginScreen from "../CheckLoginScreen";
 
+export const ProtectedRoutes = () => {
+  const user = useAppSelector((state) => state.auth.restaurant);
+  const isLoading = useAppSelector((state) => state.auth.isLoading);
+  const location = useLocation();
 
+  if (isLoading) return <CheckLoginScreen />;
 
-export const ProtectedRoutes = ()=>{
-    const dispatch = useAppDispatch();
-    // console.log("protected route accessed")
-    useEffect(()=>{
-            const initAuth = async()=>{
-            try{
-                
-                const restaurantInfo = await getRestaurantInfo();
-                dispatch(setUser(restaurantInfo));
-            }catch(err){
-                dispatch(logoutUser())
-            }finally{
-                dispatch(setLoading(false));
-            }
-            }
-            initAuth();
-        },[])   
-    
-    const user = useAppSelector((state)=>state.auth.user);
-    const isLoading = useAppSelector((state)=>state.auth.isLoading);
-    const location = useLocation();
-    if (isLoading) return <CheckLoginScreen/>
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
-    if(!user){
-        return <Navigate to={"/login"} state={{from:location}} replace/>
-    }
-    return <Outlet/>
-
-}
+  return <Outlet />;
+};

@@ -11,7 +11,7 @@ export const getRestaurantInfo = async()=>{
     }
 }
 catch(e){
-    throw new Error("error whilc fetching restaurant information")
+    throw new Error("error while fetching restaurant information")
 }
     
 }

@@ -17,6 +17,7 @@
   --Trace-Grey-Color: #e0e0e6;
   --Ghost-White-Color: #f8f7ff;
   --Primary-Text-Color-rgb: 44, 42, 74;
+  --Error-color-hover: #e0133b;
   /* Add more custom properties */
   body {
     margin: 0;

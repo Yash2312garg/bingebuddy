@@ -1,14 +1,17 @@
-import React, { useEffect } from "react";
+import React from "react";
 // import Sidebar from "../Components/Sidebar";
 // import { addMenuUtil } from "../utils/checkinterceptors";
-import Sidebar from "../Components/Sidebar";
-import Navbar from "../Navbar/Navbar";
+import "./index.css";
+
+import CardWrapper from "./CardWrapper";
 
 const Home:React.FC= ()=>{
 
     return (<>
-    <Navbar/>
-        <Sidebar/>
+     
+    <CardWrapper/>
+  
+        
     </>)
 }
 

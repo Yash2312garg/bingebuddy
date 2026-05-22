@@ -5,7 +5,8 @@
     justify-content: flex-start;
     align-items: flex-start;
     gap: 20px;   
-    width: 15vw;
+    /* width: 15vw; */
+    width: 100%;
     border-right: 1px solid var( --Trace-Grey-Color);
     box-sizing: border-box;
     padding: 10px;
