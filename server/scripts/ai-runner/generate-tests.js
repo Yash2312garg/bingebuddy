@@ -3,21 +3,23 @@ const fs = require('fs');
 const path = require('path');
 const { GoogleGenAI } = require('@google/genai');
 
-// Global architectural mocking instructions given to the AI engine
 const SYSTEM_INSTRUCTIONS = `
-You are an expert backend QA automation engineer specialized in Express.js.
-Your job is to generate highly accurate, pure Jest unit tests for the provided MVC target code.
-You MUST write complete tests that require ZERO external dependencies.
+You are an expert backend QA automation engineer specialized in Express.js and TypeScript.
+Your job is to generate highly accurate, pure TypeScript Jest unit tests for the provided MVC target code.
+You MUST write complete tests that require ZERO external dependencies or running databases.
 
-Strict Mocking Matrix Rules:
-1. Native PostgreSQL: Mock your DB pool connection module completely.
-   Example: jest.mock('../config/db', () => ({ query: jest.fn() }));
+Strict Mocking Matrix Rules (TypeScript Syntax):
+1. Native PostgreSQL Pool: Mock your DB pool connection module completely.
+   Example: 
+   import pool from '../config/db';
+   jest.mock('../config/db', () => ({ query: jest.fn() }));
 2. Redis Cache: Mock the implementation of get/set calls.
    Example: jest.mock('../config/redis', () => ({ get: jest.fn(), set: jest.fn() }));
-3. AWS S3: Mock the '@aws-sdk/client-s3' Send command wrapper. Do not call AWS.
-4. Express: Mock 'req' and 'res' using jest.fn() for res.status, res.json, and res.send.
+3. AWS S3: Mock the '@aws-sdk/client-s3' Send command wrapper. Do not call real AWS.
+4. Express: Mock 'Request' and 'Response' types using jest.fn() for res.status, res.json, and res.send.
 
-Ensure all file relative paths back to the source 'src/' are exact and calculated according to the target file placement.
+Ensure all file relative paths back to the source 'src/' are exact, type-safe, and calculated according to the target file placement.
+Do not wrap your output code in markdown code blocks inside the JSON string.
 `;
 
 async function run() {
@@ -31,14 +33,13 @@ async function run() {
   console.log("Analyzing git repository changes...");
   let changedFiles = [];
   try {
-    // 1. Get diff from the root of the monorepo
+    // 1. Trace changes specifically inside server/src/
     changedFiles = execSync('git diff --name-only HEAD~1 HEAD')
       .toString()
       .trim()
       .split('\n')
       .filter(file => {
-        // Adjust this if your backend folder has a different name!
-        return (file.startsWith('backend/src/controllers/') || file.startsWith('backend/src/models/')) && file.endsWith('.js');
+        return (file.startsWith('server/src/controllers/') || file.startsWith('server/src/models/')) && file.endsWith('.ts');
       });
   } catch (err) {
     console.log("Could not process git context history. Exiting cleanly.");
@@ -46,36 +47,36 @@ async function run() {
   }
 
   if (changedFiles.length === 0) {
-    console.log("Zero target Express MVC component changes detected in backend. Ending step.");
+    console.log("Zero target TypeScript MVC component changes detected in server. Ending step.");
     return;
   }
 
   console.log(`Detected changes across target source targets: \n${changedFiles.join('\n')}\n`);
 
   for (const file of changedFiles) {
-    // Read the file relative to the monorepo root
-    const absoluteGitRootPath = path.resolve(__dirname, '../..', file); // adjusts for scripts/ai-runner depth
+    const absoluteGitRootPath = path.resolve(__dirname, '../..', file); 
     console.log(`Processing file: ${file}`);
     const codeContent = fs.readFileSync(absoluteGitRootPath, 'utf8');
 
-    // Remove the 'backend/' prefix for internal script processing
-    const localizedBackendPath = file.replace('backend/', '');
+    // Strip 'server/' prefix for localized path generation
+    const localizedServerPath = file.replace('server/', '');
 
-    // Calculate structural relative path jumps dynamically for the AI
-    const depth = localizedBackendPath.split('/').length - 1;
+    // Calculate structural relative path jumps dynamically for TypeScript imports
+    const depth = localizedServerPath.split('/').length - 1;
     const relativePathPrefix = '../'.repeat(depth) + 'src/';
 
     const prompt = `
-      Target file layout location: ${localizedBackendPath}
+      Target TypeScript file layout location: ${localizedServerPath}
       Relative access path back to root src is: ${relativePathPrefix}
       
-      Review the following component code and construct the unit testing configuration matching our architecture specifications:
-      \`\`\`javascript
+      Review the following TypeScript component code and construct the unit testing configuration matching our architecture specifications:
+      \`\`\`typescript
       ${codeContent}
       \`\`\`
     `;
 
     try {
+      // 2. Query Gemini utilizing strict structured JSON constraints
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
@@ -85,9 +86,13 @@ async function run() {
           responseSchema: {
             type: "OBJECT",
             properties: {
-              testCode: { type: "STRING" },
+              testCode: { 
+                type: "STRING", 
+                description: "Executable, complete TypeScript Jest test code including all mocks." 
+              },
               criticalityReport: {
                 type: "ARRAY",
+                description: "List of found code problems and vulnerabilities mapped by structural severity.",
                 items: {
                   type: "OBJECT",
                   properties: {
@@ -106,15 +111,15 @@ async function run() {
 
       const result = JSON.parse(response.text);
 
-      // 2. Mirror paths cleanly within backend/tests/ai-generated/
-      const mirrorPath = localizedBackendPath.replace('src/', 'tests/ai-generated/').replace('.js', '.test.js');
+      // 3. Mirror paths cleanly within server/tests/ai-generated/ using .test.ts extension
+      const mirrorPath = localizedServerPath.replace('src/', 'tests/ai-generated/').replace('.ts', '.test.ts');
       
       fs.mkdirSync(path.dirname(mirrorPath), { recursive: true });
       fs.writeFileSync(mirrorPath, result.testCode, 'utf8');
-      console.log(`Successfully constructed: ${mirrorPath}`);
+      console.log(`Successfully constructed TypeScript test: ${mirrorPath}`);
 
       if (result.criticalityReport && result.criticalityReport.length > 0) {
-        processAlerts(localizedBackendPath, result.criticalityReport);
+        processAlerts(localizedServerPath, result.criticalityReport);
       }
 
     } catch (apiError) {
@@ -122,10 +127,10 @@ async function run() {
     }
   }
 }
-// 5. Build native GitHub Markdown notifications and open issues dynamically
+
 function processAlerts(filename, reports) {
   let hasCritical = false;
-  let summaryMarkdown = `### 🤖 AI Code Quality Audit for \`${filename}\`\n\n| Severity | Issue | Insight |\n| --- | --- | --- |\n`;
+  let summaryMarkdown = `### 🤖 AI TypeScript Code Quality Audit for \`${filename}\`\n\n| Severity | Issue | Insight |\n| --- | --- | --- |\n`;
 
   reports.forEach(report => {
     let emoji = "ℹ️";
@@ -138,17 +143,14 @@ function processAlerts(filename, reports) {
     summaryMarkdown += `| ${emoji} **${report.criticality}** | ${report.issue} | ${report.description} |\n`;
   });
 
-  // Append data directly onto the Step Summary of the GitHub Action execution view
   fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY || './summary.md', summaryMarkdown + '\n');
 
-  // If flagged critical, dynamically generate an open tracking Issue on the Repo
   if (hasCritical) {
     console.log(`🚨 Critical flaws isolated within ${filename}. Deploying automated issue generation...`);
     try {
       const issueTitle = `[AI Alert] Critical Vulnerability Identified in ${filename}`;
       const issueBody = `The AI unit test orchestration engine detected severe operational patterns inside \`${filename}\` during deployment processing.\n\n${summaryMarkdown}`;
       
-      // Execute via built-in GitHub CLI present inside GitHub Action runner
       execSync(`gh issue create --title "${issueTitle}" --body "${issueBody.replace(/"/g, '\\"')}" --label "bug"`, {
         env: { ...process.env, GH_TOKEN: process.env.GITHUB_TOKEN }
       });
