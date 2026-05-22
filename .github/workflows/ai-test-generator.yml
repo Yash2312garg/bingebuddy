@@ -53,6 +53,10 @@ jobs:
           if [ -n "$(git status --porcelain server/tests/ai-generated)" ]; then
             git add server/tests/ai-generated/
             git commit -m "chore(testing): auto-generated TypeScript unit tests [skip ci]"
+            
+            # Wipes out any temporary package-lock or cache noise, keeping our new commit pristine
+            git reset --hard HEAD 
+            
             git pull --rebase origin development
             git push origin development
           else
