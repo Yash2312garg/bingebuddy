@@ -30,10 +30,12 @@ async function run() {
 
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-  console.log("Analyzing git repository changes...");
+  console.log("Analyzing PR branch git metrics against target development branch...");
   let changedFiles = [];
   try {
-    changedFiles = execSync('git diff --name-only HEAD~1 HEAD')
+    // Fetches the reference target line to compare changes accurately in the cloud runner
+    execSync('git fetch origin development --depth=1');
+    changedFiles = execSync('git diff --name-only origin/development...HEAD')
       .toString()
       .trim()
       .split('\n')
@@ -41,16 +43,16 @@ async function run() {
         return (file.startsWith('server/src/controllers/') || file.startsWith('server/src/models/')) && file.endsWith('.ts');
       });
   } catch (err) {
-    console.log("Could not process git context history. Exiting cleanly.");
+    console.log("Could not compute git difference layer context. Exiting cleanly.");
     return;
   }
 
   if (changedFiles.length === 0) {
-    console.log("Zero target TypeScript MVC component changes detected in server. Ending step.");
+    console.log("Zero target TypeScript changes detected in this Pull Request. Skipping quality checks.");
     return;
   }
 
-  console.log(`Detected changes across target source targets: \n${changedFiles.join('\n')}\n`);
+  console.log(`Detected PR changes across target files: \n${changedFiles.join('\n')}\n`);
 
   for (const file of changedFiles) {
     const absoluteGitRootPath = path.resolve(__dirname, '../../..', file); 
@@ -62,7 +64,7 @@ async function run() {
     const testFolderDepth = mirrorPath.split('/').length - 1; 
     const relativePathToSrc = '../'.repeat(testFolderDepth) + 'src/';
 
-    const initialPrompt = `
+    let initialPrompt = `
       Target TypeScript file layout location: ${localizedServerPath}
       Target Test file will be saved at: ${mirrorPath}
       CRITICAL: Whenever importing from the 'src/' tree, you MUST use this exact prefix string: ${relativePathToSrc}
@@ -73,134 +75,221 @@ async function run() {
       \`\`\`
     `;
 
-    // 1. Initial Test Generation (with Phase 1 503 Retry Safety Net)
-    let initialResponse = await callGeminiWithRetry(ai, initialPrompt, {
+    // 1. Initial Generation
+    let aiResponse = await callGeminiWithRetry(ai, initialPrompt, {
       type: "OBJECT",
-      properties: {
-        testCode: { type: "STRING" },
-        criticalityReport: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              issue: { type: "STRING" },
-              criticality: { type: "STRING", enum: ["CRITICAL", "MEDIUM", "LOW"] },
-              description: { type: "STRING" }
-            },
-            required: ["issue", "criticality", "description"]
-          }
-        }
-      },
-      required: ["testCode", "criticalityReport"]
+      properties: { testCode: { type: "STRING" } },
+      required: ["testCode"]
     });
 
-    if (!initialResponse) continue;
+    if (!aiResponse) continue;
+    let generatedTestCode = JSON.parse(aiResponse.text).testCode;
 
+    fs.mkdirSync(path.dirname(mirrorPath), { recursive: true });
+    fs.writeFileSync(mirrorPath, generatedTestCode, 'utf8');
+
+    // --- SELF-HEALING QUALITY LOOPS ---
+    let loopAttempt = 1;
+    const maxLoops = 2;
+    let passGates = false;
+
+    while (loopAttempt <= maxLoops && !passGates) {
+      console.log(`Executing Quality Gate Check Loop [Attempt ${loopAttempt}/${maxLoops}]...`);
+      
+      // Execute Gate A: Structural Coverage Analysis
+      const gateA = await runGateA(mirrorPath);
+      if (!gateA.passed) {
+        console.log(`❌ Gate A Structural Validation Failed: ${gateA.reason}`);
+        generatedTestCode = await handleHealingLoop(ai, localizedServerPath, mirrorPath, codeContent, generatedTestCode, gateA.log, "STRUCTURAL_FAILURE");
+        if (!generatedTestCode) break;
+        loopAttempt++;
+        continue;
+      }
+      console.log("✅ Gate A Structural Validation Passed! Code Coverage is >= 80%.");
+
+      // Execute Gate B: Logical Verification Audit
+      const gateB = await runGateB(ai, codeContent, generatedTestCode);
+      if (!gateB.passed) {
+        console.log(`❌ Gate B Logical Verification Audit Failed: ${gateB.reason}`);
+        generatedTestCode = await handleHealingLoop(ai, localizedServerPath, mirrorPath, codeContent, generatedTestCode, gateB.reason, "LOGICAL_FAILURE");
+        if (!generatedTestCode) break;
+        loopAttempt++;
+        continue;
+      }
+      console.log("✅ Gate B Logical Verification Passed! No test shortcuts detected.");
+      passGates = true;
+    }
+
+    // 2. Final Verification Checks
+    if (!passGates) {
+      console.error("❌ Test architecture could not pass quality gates within the healing loops. Pipeline halted.");
+      process.exit(1);
+    }
+
+    console.log(`Running final confirmation verification run on: ${mirrorPath}`);
     try {
-      const result = JSON.parse(initialResponse.text);
-      fs.mkdirSync(path.dirname(mirrorPath), { recursive: true });
-      fs.writeFileSync(mirrorPath, result.testCode, 'utf8');
-      console.log(`Successfully constructed TypeScript test: ${mirrorPath}`);
-
-      if (result.criticalityReport && result.criticalityReport.length > 0) {
-        processAlerts(localizedServerPath, result.criticalityReport);
-      }
-
-      // 2. Programmatic Jest Execution for Self-Healing Inspection
-      console.log(`Running Jest validation for: ${mirrorPath}`);
-      try {
-        execSync(`npx jest ${mirrorPath} --passWithNoTests`, { stdio: 'pipe' });
-        console.log("✅ Test suite passed successfully on the first pass!");
-      } catch (jestError) {
-        // Capture the exact console logs and failure payload from Jest
-        const executionLog = jestError.stdout?.toString() || jestError.stderr?.toString() || jestError.message;
-        console.log("❌ Test execution failed. Initializing Phase 2 Self-Healing and Ticket Engine...");
-
-        await handleTestFailure(ai, localizedServerPath, mirrorPath, codeContent, result.testCode, executionLog);
-      }
-
-    } catch (parseError) {
-      console.error(`Failed processing structured response:`, parseError.message);
+      execSync(`npx jest ${mirrorPath} --passWithNoTests`, { stdio: 'pipe' });
+      console.log("🎉 All gates passed! Test file verified and approved.");
+    } catch (finalErr) {
+      const logOutput = finalErr.stdout?.toString() || finalErr.stderr?.toString() || finalErr.message;
+      console.log("🚨 True Application Bug Detected! Forcing Jira Issue synchronization...");
+      await createRealJiraTicket(localizedServerPath, logOutput);
+      process.exit(1); // Terminates execution, which physically locks the PR merge button!
     }
   }
 }
 
-// 3. The Self-Healing & Jira Ticket Determination Engine
-async function handleTestFailure(ai, sourcePath, testPath, sourceCode, generatedTestCode, jestErrorLog) {
-  const healingPrompt = `
-    You are an automated code resilience supervisor. A generated unit test has failed a Jest execution run.
+// Gate A Implementation: Core Coverage Summaries
+async function runGateA(testPath) {
+  const tmpCoverageDir = 'coverage-tmp';
+  try {
+    execSync(`npx jest ${testPath} --coverage --coverageReporters=json-summary --coverageDirectory=${tmpCoverageDir}`, { stdio: 'pipe' });
     
-    Source Component Code:
+    const summaryPath = path.resolve(tmpCoverageDir, 'coverage-summary.json');
+    if (!fs.existsSync(summaryPath)) {
+      return { passed: false, reason: "Coverage output matrix failed to render summary profiles.", log: "" };
+    }
+
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    const statementCoverage = summary.total.statements.pct;
+
+    if (statementCoverage < 80) {
+      return { passed: false, reason: `Insufficient statement coverage score: ${statementCoverage}%. Required >= 80%.`, log: JSON.stringify(summary.total) };
+    }
+    return { passed: true };
+  } catch (err) {
+    return { passed: false, reason: "Jest runtime crash occurred during structural isolation tests.", log: err.stdout?.toString() || err.message };
+  } finally {
+    if (fs.existsSync(tmpCoverageDir)) fs.rmSync(tmpCoverageDir, { recursive: true, force: true });
+  }
+}
+
+// Gate B Implementation: Code Logical Integrity Review
+async function runGateB(ai, sourceCode, testCode) {
+  const auditorPrompt = `
+    You are a Senior Software Engineer acting as a strict QA Auditor. Review this generated unit test against the target source controller code.
+    Verify that the test does not cheat coverage with useless statements, tautologies, or overly aggressive mocks that bypass business logic.
+
+    Target Source Code:
     \`\`\`typescript
     ${sourceCode}
     \`\`\`
 
-    Your Previously Generated Test Code (at ${testPath}):
+    Generated Test Code:
     \`\`\`typescript
-    ${generatedTestCode}
+    ${testCode}
     \`\`\`
-
-    Exact Jest Failure Log Output:
-    \`\`\`text
-    ${jestErrorLog}
-    \`\`\`
-
-    Analyze the mistake:
-    1. Is this a 'Test-Level Defect'? (e.g., you hallucinated an import path, wrote invalid TypeScript syntax, or incorrectly structured a Jest spy/mock). If so, set isRealBugInSourceCode to false and provide the fixedTestCode.
-    2. Is this a 'True Application Bug'? (e.g., the code failed because the controller lacks error catching, handles a missing payload element improperly, or mismanages a null boundary condition). If so, set isRealBugInSourceCode to true and write a detailed Jira Bug Ticket in jiraTicketMarkdown matching the requested schema.
   `;
 
-  const healingResponse = await callGeminiWithRetry(ai, healingPrompt, {
+  const response = await callGeminiWithRetry(ai, auditorPrompt, {
+    type: "OBJECT",
+    properties: {
+      hasFlaws: { type: "BOOLEAN" },
+      critique: { type: "STRING", description: "Detailed description of logical flaws or confirmation of high quality code." }
+    },
+    required: ["hasFlaws", "critique"]
+  });
+
+  if (!response) return { passed: false, reason: "Auditor could not complete verification matrix checks." };
+  
+  const audit = JSON.parse(response.text);
+  if (audit.hasFlaws) {
+    return { passed: false, reason: audit.critique };
+  }
+  return { passed: true };
+}
+
+async function handleHealingLoop(ai, sourcePath, testPath, sourceCode, badTestCode, errorLog, failureType) {
+  const fixPrompt = `
+    You are a code resilience agent. A generated test failed quality validation during pipeline ingestion.
+    Failure Type Classification: ${failureType}
+    Diagnostic Log Metric payload: ${errorLog}
+
+    Source Code:
+    \`\`\`typescript
+    ${sourceCode}
+    \`\`\`
+
+    Failing Test Code:
+    \`\`\`typescript
+    ${badTestCode}
+    \`\`\`
+
+    If this is an application bug rather than a test flaw, set isRealBugInSourceCode to true and write a Jira report summary.
+    Otherwise, rewrite the test script completely to satisfy both code logic coverage metrics and mocking structure parameters.
+  `;
+
+  const response = await callGeminiWithRetry(ai, fixPrompt, {
     type: "OBJECT",
     properties: {
       isRealBugInSourceCode: { type: "BOOLEAN" },
-      fixedTestCode: { type: "STRING", description: "The complete corrected test script. Populate ONLY if isRealBugInSourceCode is false." },
-      jiraTicketMarkdown: { type: "STRING", description: "A detailed Jira ticket text written in clean Markdown notation. Populate ONLY if isRealBugInSourceCode is true." }
+      fixedTestCode: { type: "STRING" },
+      jiraTicketSummary: { type: "STRING" }
     },
     required: ["isRealBugInSourceCode"]
   });
 
-  if (!healingResponse) return;
+  if (!response) return null;
+  const resolution = JSON.parse(response.text);
+
+  if (resolution.isRealBugInSourceCode) {
+    console.log("🚨 True Application Bug isolated within healing validation checks!");
+    await createRealJiraTicket(sourcePath, `Healing assessment isolated logic failure: ${resolution.jiraTicketSummary}\n\nLogs:\n${errorLog}`);
+    process.exit(1);
+  }
+
+  console.log("🔧 Rewriting test file with self-healed optimizations...");
+  fs.writeFileSync(testPath, resolution.fixedTestCode, 'utf8');
+  return resolution.fixedTestCode;
+}
+
+async function createRealJiraTicket(sourceFile, executionLogs) {
+  const domain = process.env.JIRA_DOMAIN;
+  const email = process.env.JIRA_EMAIL;
+  const token = process.env.JIRA_API_TOKEN;
+  const projectKey = process.env.JIRA_PROJECT_KEY;
+
+  if (!domain || !email || !token || !projectKey) {
+    console.warn("⚠️ Jira connection configuration variables missing. Ticket fallback skipped.");
+    return;
+  }
+
+  const issueSummary = `[AI Alert] Application Defect Exposed in ${path.basename(sourceFile)}`;
+  const issueDescription = `The automated testing pipeline detected a functional logic defect during the verification matrix execution run.\n\nTarget File Layout Location:\n* ${sourceFile}\n\nExecution Stack Trace Logs:\n{code:text}\n${executionLogs.substring(0, 4000)}\n{code}`;
+
+  const jiraPayload = {
+    fields: {
+      project: { key: projectKey },
+      summary: issueSummary,
+      description: issueDescription,
+      issuetype: { name: "Bug" }
+    }
+  };
+
+  const authHeader = `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`;
 
   try {
-    const assessment = JSON.parse(healingResponse.text);
+    const res = await fetch(`https://${domain}/rest/api/2/issue`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(jiraPayload)
+    });
 
-    if (assessment.isRealBugInSourceCode === false && assessment.fixedTestCode) {
-      console.log("🔧 AI diagnosed a Test-Level Defect. Overwriting with Self-Healed test script...");
-      fs.writeFileSync(testPath, assessment.fixedTestCode, 'utf8');
-
-      // Verify the healed test code one final time
-      try {
-        execSync(`npx jest ${testPath} --passWithNoTests`, { stdio: 'pipe' });
-        console.log("🎉 Self-Healing Successful! The test code is corrected and now passes cleanly.");
-      } catch (retryError) {
-        console.log("⚠️ Self-healed test still fails structural checks. Forcing automated ticket fallback.");
-        generateJiraTicketFile(sourcePath, retryError.stdout?.toString() || retryError.message, "AI self-healing loop failed to resolve test structure assertions.");
-      }
-    } else if (assessment.isRealBugInSourceCode === true && assessment.jiraTicketMarkdown) {
-      console.log("🚨 AI diagnosed a TRUE application bug! Compiling Jira Ticket report...");
-      generateJiraTicketFile(sourcePath, jestErrorLog, assessment.jiraTicketMarkdown);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Atlassian Server rejected request payload: ${res.status} - ${errText}`);
     }
-  } catch (err) {
-    console.error("Failed to execute healing loop logic parsing:", err.message);
+
+    const data = await res.json();
+    console.log(`🚀 Real Jira Issue Successfully Created on Board! Ticket Reference Key: ${data.key}`);
+  } catch (apiError) {
+    console.error("❌ Failed programmatically dispatching issue parameters to Jira REST API Endpoint:", apiError.message);
   }
 }
 
-// 4. Jira Ticket File Custom Builder
-function generateJiraTicketFile(sourcePath, rawLogs, ticketMarkdown) {
-  const ticketDir = path.resolve('tests/tickets');
-  fs.mkdirSync(ticketDir, { recursive: true });
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const ticketPath = path.join(ticketDir, `BUG-${timestamp}.md`);
-
-  let completeTicketFile = `${ticketMarkdown}\n\n## 📋 Raw Test Pipeline Logs\n\`\`\`text\n${rawLogs}\n\`\`\``;
-
-  fs.writeFileSync(ticketPath, completeTicketFile, 'utf8');
-  console.log(`💾 Jira ticket log file compiled and saved to: server/tests/tickets/BUG-${timestamp}.md`);
-}
-
-// 5. Shared Core Call Utility with Exponential Backoff Retries
 async function callGeminiWithRetry(ai, prompt, responseSchema) {
   const maxAttempts = 3;
   let currentDelay = 3000;
@@ -217,51 +306,14 @@ async function callGeminiWithRetry(ai, prompt, responseSchema) {
         }
       });
       return response;
-} catch (apiError) {
-        // Added raw error output logging to reveal the exact reason for the failure
-        console.warn(`⚠️ API attempt ${attempt} failed. Reason: ${apiError.message || apiError}`);
-        
-        if (attempt === maxAttempts) {
-          console.error(`❌ Definitively failed calling Gemini API after ${maxAttempts} runs.`);
-          return null;
-        }
-      console.log(`Pausing for ${currentDelay / 1000} seconds before retrying...`);
+    } catch (apiError) {
+      console.warn(`⚠️ API attempt ${attempt} failed: ${apiError.message}`);
+      if (attempt === maxAttempts) return null;
       await sleep(currentDelay);
       currentDelay *= 2;
     }
   }
   return null;
-}
-
-function processAlerts(filename, reports) {
-  let hasCritical = false;
-  let summaryMarkdown = `### 🤖 AI TypeScript Code Quality Audit for \`${filename}\`\n\n| Severity | Issue | Insight |\n| --- | --- | --- |\n`;
-
-  reports.forEach(report => {
-    let emoji = "ℹ️";
-    if (report.criticality === "CRITICAL") {
-      emoji = "🚨";
-      hasCritical = true;
-    } else if (report.criticality === "MEDIUM") {
-      emoji = "⚠️";
-    }
-    summaryMarkdown += `| ${emoji} **${report.criticality}** | ${report.issue} | ${report.description} |\n`;
-  });
-
-  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY || './summary.md', summaryMarkdown + '\n');
-
-  if (hasCritical) {
-    try {
-      const issueTitle = `[AI Alert] Critical Vulnerability Identified in ${filename}`;
-      const issueBody = `The AI unit test orchestration engine detected severe operational patterns inside \`${filename}\` during deployment processing.\n\n${summaryMarkdown}`;
-      
-      execSync(`gh issue create --title "${issueTitle}" --body "${issueBody.replace(/"/g, '\\"')}" --label "bug"`, {
-        env: { ...process.env, GH_TOKEN: process.env.GITHUB_TOKEN }
-      });
-    } catch (cliErr) {
-      console.error("Failed to publish GitHub Issue notification layer:", cliErr.message);
-    }
-  }
 }
 
 run();
