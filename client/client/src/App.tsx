@@ -12,6 +12,7 @@ import Menu from "./Menu";
 import CreateMenu from "./CreateMenu";
 import RootLayout from "./utils/RootLayout";
 import EditMenu from "./EditMenu";
+import Categories from "./Categories";
 
 const router = createBrowserRouter([
   {
@@ -74,6 +75,14 @@ const router = createBrowserRouter([
                     },
                   }
                 ],
+              },
+              {
+                path: "/categories",
+                element: <Categories />,
+                handle: {
+                  primaryHeading: "Categories Management",
+                  secondaryHeading: "Organize your menu items into categories",
+                },
               },
             ],
           },

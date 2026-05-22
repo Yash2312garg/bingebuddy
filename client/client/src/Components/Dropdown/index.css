@@ -1,0 +1,189 @@
+/* ─────────────────────────────────────────
+   Dropdown Root
+───────────────────────────────────────── */
+.dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  position: relative; /* ✅ anchor for absolute options */
+}
+
+.dropdown.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────
+   Label
+───────────────────────────────────────── */
+.dropdown-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--Secondary-Text-Color);
+  letter-spacing: 0.01em;
+}
+
+.dropdown-label.disabled {
+  color: var(--Secondary-Text-Color);
+}
+
+/* ─────────────────────────────────────────
+   Trigger (the visible select box)
+───────────────────────────────────────── */
+.dropdown-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 8px;
+  background-color: var(--Card_Input-Background-Color);
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--Primary-Text-Color);
+
+}
+
+/* hover */
+.dropdown-container:hover:not(.disabled) {
+  border-color: var(--light-purple-color);
+  background-color: var(--Ghost-White-Color);
+}
+
+/* open state */
+.dropdown-container.open {
+  border-color: var(--Brand-Primary-Colors);
+  background-color: var(--Ghost-White-Color);
+  box-shadow: 0 0 0 3px rgba(112, 0, 255, 0.12);
+  border-radius: 10px 10px 0px 0px; /* ✅ connects visually to options */
+}
+
+/* disabled state */
+.dropdown-container.disabled {
+  cursor: not-allowed;
+  color: var(--Secondary-Text-Color);
+}
+
+/* placeholder text style */
+.dropdown-container .placeholder {
+  color: var(--Secondary-Text-Color);
+  font-weight: 400;
+}
+
+/* ─────────────────────────────────────────
+   Chevron icon
+───────────────────────────────────────── */
+.dropdown-chevron {
+  font-size: 14px;
+  color: var(--Secondary-Text-Color);
+  transition: transform 0.2s ease;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.dropdown-chevron.open {
+  transform: rotate(180deg); /* ✅ flips when open */
+  color: var(--Brand-Primary-Colors);
+}
+
+/* ─────────────────────────────────────────
+   Options List
+───────────────────────────────────────── */
+.dropdown-options {
+  position: absolute;
+  top: 100%; /* ✅ sits right below the trigger */
+  left: 0;
+  right: 0;
+  z-index: 100;
+
+  background-color: var(--Ghost-White-Color);
+  border: 1.5px solid var(--Brand-Primary-Colors);
+  border-top: none; /* ✅ merges with trigger border */
+  border-radius: 0px 0px 10px 10px;
+
+  max-height: 220px;
+  overflow-y: auto;
+
+  box-shadow: 0 8px 24px rgba(var(--Primary-Text-Color-rgb), 0.1);
+
+  /* ✅ smooth open animation */
+  animation: dropdown-open 0.15s ease forwards;
+}
+
+@keyframes dropdown-open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─────────────────────────────────────────
+   Scrollbar styling for options list
+───────────────────────────────────────── */
+.dropdown-options::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dropdown-options::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dropdown-options::-webkit-scrollbar-thumb {
+  background-color: var(--muted-Grey-color);
+  border-radius: 99px;
+}
+
+/* ─────────────────────────────────────────
+   Individual Option
+───────────────────────────────────────── */
+.dropdown-option {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--Primary-Text-Color);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+
+  border-bottom: 1px solid var(--Trace-Grey-Color);
+}
+
+.dropdown-option:last-child {
+  border-bottom: none;
+  border-radius: 0px 0px 10px 10px; /* ✅ rounded bottom corners */
+}
+
+/* hover */
+.dropdown-option:hover {
+  background-color: var(--Card_Input-Background-Color);
+  color: var(--Brand-Primary-Colors);
+}
+
+/* selected state */
+.dropdown-option.selected {
+  background-color: rgba(112, 0, 255, 0.08);
+  color: var(--Brand-Primary-Colors);
+  font-weight: 500;
+}
+
+/* selected + hover */
+.dropdown-option.selected:hover {
+  background-color: rgba(112, 0, 255, 0.14);
+}
