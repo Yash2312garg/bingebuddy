@@ -1,0 +1,63 @@
+name: Phase 1 AI Unit Test Generator (Monorepo)
+
+on:
+  push:
+    branches:
+      - development
+
+permissions:
+  contents: write
+  issues: write
+
+# This tells GitHub to run all steps inside the backend folder automatically
+defaults:
+  run:
+    working-directory: ./backend
+
+jobs:
+  run-ai-tester:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Initialize Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './backend/package.json' # Points to backend lockfile
+
+      - name: Install Project Dependencies
+        run: |
+          npm install
+          npm install @google/genai --save-dev
+
+      - name: Execute Diff Analysis & Generate Tests
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # The script is executed relative to the backend folder now
+        run: node scripts/ai-runner/generate-tests.js
+
+      - name: Run Global Test Suite
+        run: npx jest --passWithNoTests
+
+      - name: Commit & Push Tests Back to Repository
+        # We temporarily jump back to the root folder just to do the git commit
+        run: |
+          cd ..
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -n "$(git status --porcelain backend/tests/ai-generated)" ]; then
+            git add backend/tests/ai-generated/
+            git commit -m "chore(testing): auto-generated unit tests [skip ci]"
+            git pull --rebase origin development
+            git push origin development
+          else
+            echo "No new unit tests generated to commit."
+          fi
