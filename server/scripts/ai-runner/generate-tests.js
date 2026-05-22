@@ -54,7 +54,8 @@ async function run() {
   console.log(`Detected changes across target source targets: \n${changedFiles.join('\n')}\n`);
 
   for (const file of changedFiles) {
-    const absoluteGitRootPath = path.resolve(__dirname, '../..', file); 
+    // Go up 3 levels to reach the true monorepo root (ai-runner -> scripts -> server -> root)
+    const absoluteGitRootPath = path.resolve(__dirname, '../../..', file);
     console.log(`Processing file: ${file}`);
     const codeContent = fs.readFileSync(absoluteGitRootPath, 'utf8');
 
