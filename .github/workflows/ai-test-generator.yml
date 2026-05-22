@@ -1,0 +1,55 @@
+name: Phase 1 AI Unit Test Generator
+
+on:
+  push:
+    branches:
+      - development
+
+permissions:
+  contents: write  # Crucial for pushing the generated tests back into the repo
+  issues: write    # Crucial for generating automated [AI Alert] Critical issues
+
+jobs:
+  run-ai-tester:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Fetches current commit and parent commit for git diff
+
+      - name: Initialize Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Project Dependencies
+        run: |
+          npm install
+          npm install @google/genai --save-dev
+
+      - name: Execute Diff Analysis & Generate Tests
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ai-runner/generate-tests.js
+
+      - name: Run Global Test Suite
+        run: npx jest --passWithNoTests
+
+      - name: Commit & Push Tests Back to Repository
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if there are any new or modified tests to commit
+          if [ -n "$(git status --porcelain tests/ai-generated)" ]; then
+            git add tests/ai-generated/
+            git commit -m "chore(testing): auto-generated unit tests [skip ci]"
+            git pull --rebase origin development
+            git push origin development
+          else
+            echo "No new unit tests generated to commit."
+          fi
