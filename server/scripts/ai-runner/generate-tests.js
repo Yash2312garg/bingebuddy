@@ -33,8 +33,9 @@ async function run() {
   console.log("Analyzing PR branch git metrics against target development branch...");
   let changedFiles = [];
   try {
-    // Fetches the reference target line to compare changes accurately in the cloud runner
-    execSync('git fetch origin development --depth=1');
+    // Fetches full branch history context to compute the merge base accurately
+    execSync('git fetch origin development');
+    
     changedFiles = execSync('git diff --name-only origin/development...HEAD')
       .toString()
       .trim()
