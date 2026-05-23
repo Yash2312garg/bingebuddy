@@ -39,7 +39,10 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./server
-        run: npm ci
+        run: |
+          npm ci
+          # ✅ Safety net — install if missing from package.json
+          node -e "require('@google/genai')" 2>/dev/null || npm install @google/genai --no-save
 
       - name: Execute quality gates
         working-directory: ./server
