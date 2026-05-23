@@ -11,6 +11,7 @@ You MUST write complete tests that require ZERO external dependencies or running
 
 CRITICAL RELATIVE IMPORT RULE:
 You must use standard relative paths to import modules. Use the 'RELATIVE_PATH_TO_SRC' prefix provided in the prompt when importing files from the root 'src/' tree.
+You will be given the EXACT list of modules the source file imports. You MUST use those exact module paths — do not guess, invent, or alter any module name.
 
 Strict Mocking Matrix Rules (TypeScript Syntax):
 1. Native PostgreSQL Pool: Mock your DB pool connection module completely.
@@ -24,33 +25,45 @@ Do not wrap your output code in markdown code blocks inside the JSON string.
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ─────────────────────────────────────────────────────────────
-// FIX 1 — detect the correct Jest CLI flag for path filtering
+// DETECT JEST VERSION → correct path flag
 // Jest ≥ 30 renamed --testPathPattern (singular) to
-// --testPathPatterns (plural). We probe once at startup so every
-// execSync call uses the right flag for the installed version.
+// --testPathPatterns (plural).
 // ─────────────────────────────────────────────────────────────
 
 function detectJestPathFlag(serverCwd) {
   try {
-    // Ask Jest to print its version — a safe, always-succeeding call
     const versionOutput = execSync('npx jest --version', {
       stdio: 'pipe',
       cwd: serverCwd,
     }).toString().trim();
-
-    // Version string is like "29.7.0" or "30.0.0-alpha.6"
     const major = parseInt(versionOutput.split('.')[0], 10);
-
-    // --testPathPatterns (plural) was introduced in Jest 30
     return major >= 30 ? '--testPathPatterns' : '--testPathPattern';
   } catch {
-    // Safe fallback: the older singular flag works on Jest < 30
     return '--testPathPattern';
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-// FILE ELIGIBILITY — decides if a file needs unit tests at all
+// EXTRACT REAL IMPORTS from the source file.
+// Gemini hallucinates module names when it only sees source code.
+// We parse the actual import statements and hand the exact paths
+// back so the generated test mocks use the right filenames.
+// ─────────────────────────────────────────────────────────────
+
+function extractImportPaths(fileContent) {
+  const importRegex = /(?:import|require)\s*(?:\(?\s*['"`]([^'"`]+)['"`]\s*\)?|[\w\s{},*]+\s+from\s+['"`]([^'"`]+)['"`])/g;
+  const paths = new Set();
+  let match;
+  while ((match = importRegex.exec(fileContent)) !== null) {
+    const p = match[1] || match[2];
+    if (p) paths.add(p);
+  }
+  // Only return relative imports (the ones Gemini could get wrong)
+  return [...paths].filter(p => p.startsWith('.'));
+}
+
+// ─────────────────────────────────────────────────────────────
+// FILE ELIGIBILITY
 // ─────────────────────────────────────────────────────────────
 
 const SKIP_FILENAME_PATTERNS = [
@@ -153,17 +166,14 @@ function shouldSkipFile(filePath, fileContent) {
 async function aiShouldGenerateTests(ai, fileContent, filePath) {
   const eligibilityPrompt = `
     You are a senior TypeScript engineer reviewing a file to decide if it needs unit tests.
-
     File path: ${filePath}
-
     File content:
     \`\`\`typescript
     ${fileContent.substring(0, 3000)}
     \`\`\`
-
     Respond with:
-    - needsTests: true if the file contains testable business logic (controllers, services, data access, utilities with logic, middleware with conditions)
-    - needsTests: false if the file is ONLY: type definitions, interfaces, enums, re-exports/barrel files, constants with no logic, configuration objects, empty scaffolding
+    - needsTests: true if the file contains testable business logic
+    - needsTests: false if the file is ONLY: type definitions, interfaces, enums, re-exports, constants, configuration objects, empty scaffolding
     - reason: one sentence explaining why
   `;
 
@@ -189,22 +199,17 @@ async function aiShouldGenerateTests(ai, fileContent, filePath) {
 
 function parseFailuresFromLog(executionLogs) {
   const failures = [];
-
   const jestFailureBlocks = executionLogs.split(/\n\s*●\s+/).filter(Boolean);
 
   if (jestFailureBlocks.length > 1) {
     const testBlocks = jestFailureBlocks.slice(1);
-
     for (const block of testBlocks) {
       const lines = block.trim().split('\n');
       const testName = lines[0].trim();
-
       const errorLine = lines.find(l =>
         l.trim().match(/^(Error:|TypeError:|ReferenceError:|SyntaxError:|expect\(|Cannot|Failed|Received)/i)
       ) || lines[1] || '';
-
       const sourceLine = lines.find(l => l.includes('.ts:')) || '';
-
       failures.push({
         summary: `${testName} — ${errorLine.trim().substring(0, 80)}`,
         fullLog: block.trim(),
@@ -213,7 +218,6 @@ function parseFailuresFromLog(executionLogs) {
         sourceLine: sourceLine.trim(),
       });
     }
-
     return failures;
   }
 
@@ -239,6 +243,46 @@ function parseFailuresFromLog(executionLogs) {
   }
 
   return failures;
+}
+
+// ─────────────────────────────────────────────────────────────
+// INFRASTRUCTURE ERROR CLASSIFICATION
+//
+// Critical distinction from the previous version:
+//   "Cannot find module" is only an INFRA error when it appears
+//   as a suite-load failure (before any test executes).
+//   When tests are running and a mock throws or a module resolves
+//   incorrectly at runtime, that is a TEST LOGIC error and Gemini
+//   should be allowed to fix the test — not be overridden.
+//
+// We detect suite-load failures by checking whether the error
+// appears alongside "Test suite failed to run" (Jest's phrasing
+// for compile-time / resolution errors before execution begins).
+// ─────────────────────────────────────────────────────────────
+
+const SUITE_LOAD_PATTERNS = [
+  /Test suite failed to run/i,
+  /Option .* was replaced by/i,
+  /Please update your configuration/i,
+  /error TS\d+:/i,
+  /SyntaxError: Cannot use import/i,
+  /Jest: .* is not supported/i,
+  /jest\.config/i,
+  /Could not find a config file/i,
+  /No tests found/i,
+];
+
+function isInfrastructureError(log) {
+  // Only classify as infra if it's a suite-level load failure,
+  // NOT a runtime mock/assertion failure that happens during test execution.
+  const hasSuiteLoadFailure = SUITE_LOAD_PATTERNS.some(p => p.test(log));
+
+  // If tests actually ran (console output from source code appears),
+  // this is a test logic error even if "Cannot find module" appears.
+  const testsActuallyRan = /at (?:login|getUser|createUser|middleware|handler|controller|service)\s+\(src\//i.test(log)
+    || /console\.(log|error|warn)[\s\S]{0,200}at \w+\s+\(src\//i.test(log);
+
+  return hasSuiteLoadFailure && !testsActuallyRan;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -290,10 +334,7 @@ async function createSingleJiraTicket(sourceFile, failureLog, failureSummary, fa
   try {
     const res = await fetch(`https://${domain}/rest/api/2/issue`, {
       method: 'POST',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
@@ -316,67 +357,28 @@ async function createJiraTicketsForFailures(sourceFile, executionLogs, failureTy
 
   if (failures.length === 0) {
     console.warn("⚠️  Could not parse individual failures. Creating one generic ticket.");
-    await createSingleJiraTicket(
-      sourceFile,
-      executionLogs.substring(0, 4000),
-      "Unknown failure — see log",
-      failureType,
-      1,
-      1
-    );
+    await createSingleJiraTicket(sourceFile, executionLogs.substring(0, 4000), "Unknown failure — see log", failureType, 1, 1);
     return;
   }
 
   console.log(`\n🎫 Creating ${failures.length} Jira ticket(s) for ${failures.length} distinct failure(s)...`);
-
   for (let i = 0; i < failures.length; i++) {
-    await createSingleJiraTicket(
-      sourceFile,
-      failures[i].fullLog,
-      failures[i].summary,
-      failureType,
-      i + 1,
-      failures.length
-    );
+    await createSingleJiraTicket(sourceFile, failures[i].fullLog, failures[i].summary, failureType, i + 1, failures.length);
     if (i < failures.length - 1) await sleep(500);
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-// FIX 2 — classify the error log BEFORE sending to Gemini
-// If the crash log contains well-known infrastructure/config error
-// signatures, we skip the AI healing call entirely and just retry
-// test generation from scratch.  This prevents Gemini from seeing
-// a "testPathPattern was replaced" Jest CLI message and
-// hallucinating a "real app bug" — which caused a spurious Jira
-// ticket and process.exit(1) in the previous run.
-// ─────────────────────────────────────────────────────────────
-
-const INFRASTRUCTURE_ERROR_PATTERNS = [
-  /Option .* was replaced by/i,           // Jest CLI flag renamed
-  /Please update your configuration/i,    // Jest config schema error
-  /Cannot find module/i,                  // missing dependency / wrong import path
-  /error TS\d+:/i,                        // TypeScript compile error
-  /SyntaxError: Cannot use import/i,      // ESM/CJS interop
-  /Jest: .* is not supported/i,           // Jest version incompatibility
-  /jest\.config/i,                        // jest.config problem
-  /Could not find a config file/i,
-  /No tests found/i,
-];
-
-function isInfrastructureError(log) {
-  return INFRASTRUCTURE_ERROR_PATTERNS.some(pattern => pattern.test(log));
-}
-
-// ─────────────────────────────────────────────────────────────
 // GATE A — coverage check
+// Added --forceExit so Jest doesn't hang after async tests
+// complete, which previously blocked the coverage JSON write.
 // ─────────────────────────────────────────────────────────────
 
 async function runGateA(absoluteTestPath, repoRoot, jestPathFlag) {
   const tmpCoverageDir = path.join(repoRoot, 'server', 'coverage-tmp');
   try {
     execSync(
-      `npx jest "${jestPathFlag}=${absoluteTestPath}" --coverage --coverageReporters=json-summary --coverageDirectory=${tmpCoverageDir} --config=jest.config.ts`,
+      `npx jest "${jestPathFlag}=${absoluteTestPath}" --coverage --coverageReporters=json-summary --coverageDirectory=${tmpCoverageDir} --config=jest.config.ts --forceExit`,
       { stdio: 'pipe', cwd: path.join(repoRoot, 'server') }
     );
 
@@ -409,12 +411,18 @@ async function runGateA(absoluteTestPath, repoRoot, jestPathFlag) {
     console.error(log.substring(0, 5000));
     console.error("━━━ End Gate A crash log ━━━\n");
 
+    const infra = isInfrastructureError(log);
+    if (infra) {
+      console.log("ℹ️  Classified as infrastructure/suite-load error (tests did not run).");
+    } else {
+      console.log("ℹ️  Classified as test logic error (tests ran but failed or coverage insufficient).");
+    }
+
     return {
       passed: false,
       reason: "Jest crashed during coverage run.",
       log,
-      // FIX 2: tag infra errors so handleHealingLoop skips the AI "real bug" check
-      isInfra: isInfrastructureError(log),
+      isInfra: infra,
     };
   } finally {
     if (fs.existsSync(tmpCoverageDir)) {
@@ -454,23 +462,18 @@ async function runGateB(ai, sourceCode, testCode) {
   });
 
   if (!response) return { passed: false, reason: "Auditor failed to respond." };
-
   const audit = JSON.parse(response.text);
-  return audit.hasFlaws
-    ? { passed: false, reason: audit.critique }
-    : { passed: true };
+  return audit.hasFlaws ? { passed: false, reason: audit.critique } : { passed: true };
 }
 
 // ─────────────────────────────────────────────────────────────
 // SELF-HEALING LOOP
-// FIX 2 continued: isInfraError flag bypasses the "real app bug"
-// AI check. Infrastructure errors (wrong import path, CLI flags,
-// TypeScript compile errors) are NEVER real application bugs —
-// they are test-generation problems that must be fixed by
-// rewriting the test, never by filing a Jira ticket.
+// isInfraError only blocks the "real bug" path for genuine
+// suite-load failures. Test logic errors (mocks, assertions,
+// coverage gaps) flow through Gemini normally.
 // ─────────────────────────────────────────────────────────────
 
-async function handleHealingLoop(ai, sourcePath, absoluteTestPath, sourceCode, badTestCode, errorLog, failureType, isInfraError = false) {
+async function handleHealingLoop(ai, sourcePath, absoluteTestPath, sourceCode, badTestCode, errorLog, failureType, isInfraError, sourceImports, relativePathToSrc) {
   const fixPrompt = `
     A generated TypeScript Jest test failed quality validation.
     Failure Type: ${failureType}
@@ -488,17 +491,24 @@ async function handleHealingLoop(ai, sourcePath, absoluteTestPath, sourceCode, b
     ${badTestCode}
     \`\`\`
 
+    EXACT import paths used by the source file (use ONLY these — do not invent module names):
+    ${sourceImports.map(p => `  - ${p}  →  mock as: '${relativePathToSrc}${p.replace(/^\.\//, '').replace(/^\.\.\//, '')}'`).join('\n')}
+
+    When building jest.mock() paths, derive them by replacing the source file's relative
+    import with the correct path from the TEST file's location using prefix: ${relativePathToSrc}
+
     IMPORTANT RULES:
-    - Infrastructure errors (wrong import paths, TypeScript compile errors, missing jest.mock() calls,
-      Jest CLI/config errors) are NEVER real application bugs. Always set isRealBugInSourceCode=false
-      for these and fix the test code instead.
+    - NEVER invent or guess module file names. Use only the exact imports listed above.
+    - Infrastructure errors (Jest CLI/config errors, suite failed to run before any test executed)
+      are NEVER real application bugs. Set isRealBugInSourceCode=false for these.
     - Only set isRealBugInSourceCode=true if the source code itself has an obvious logical defect
-      that cannot be worked around in the test (e.g. a function that always throws regardless of input,
-      or a clear null-dereference in the production code path).
-    - Common fixes to try first:
-        1. Correct relative import paths — count '../' hops from the test file location to server/src/.
-        2. Add missing jest.mock() for every module touching network, DB, Redis, S3, email, sessions.
-        3. Fix TypeScript type errors in mock shapes.
+      that cannot be worked around in the test (e.g. a function that always throws regardless of
+      input, or a clear null-dereference in the production code path).
+    - Common fixes to try:
+        1. Ensure jest.mock() paths exactly match the source's import paths, prefixed with ${relativePathToSrc}
+        2. Ensure mock return values match the shape the source code expects.
+        3. Ensure async mocks use jest.fn().mockResolvedValue() / mockRejectedValue().
+        4. If coverage is below 80%, add test cases for uncovered branches.
     - Return the COMPLETE fixed test file — no partial snippets.
   `;
 
@@ -516,7 +526,6 @@ async function handleHealingLoop(ai, sourcePath, absoluteTestPath, sourceCode, b
 
   const resolution = JSON.parse(response.text);
 
-  // FIX 2: never treat infra errors as real bugs, regardless of what Gemini says
   if (resolution.isRealBugInSourceCode && !isInfraError) {
     console.log("🚨 Real application bug found during healing loop!");
     await createJiraTicketsForFailures(
@@ -528,7 +537,12 @@ async function handleHealingLoop(ai, sourcePath, absoluteTestPath, sourceCode, b
   }
 
   if (resolution.isRealBugInSourceCode && isInfraError) {
-    console.warn("⚠️  Gemini flagged a real bug but error is infrastructure/config — overriding and rewriting test.");
+    console.warn("⚠️  Gemini flagged a real bug but error is infrastructure/suite-load — overriding and rewriting test.");
+  }
+
+  if (!resolution.fixedTestCode) {
+    console.error("❌ Healer returned no fixed test code.");
+    return null;
   }
 
   console.log("🔧 Rewriting test with healed version...");
@@ -605,10 +619,8 @@ async function run() {
   const repoRoot = path.resolve(__dirname, '../../..');
   const serverCwd = path.join(repoRoot, 'server');
 
-  // FIX 1: detect the correct Jest path flag once before any test run
   const jestPathFlag = detectJestPathFlag(serverCwd);
   console.log(`\nUsing Jest path flag: ${jestPathFlag}`);
-
   console.log(`\nAnalyzing diff: ${baseSha} → ${headSha}\n`);
 
   let allChangedFiles = [];
@@ -630,7 +642,6 @@ async function run() {
   }
 
   console.log(`Changed .ts files in this PR:\n${allChangedFiles.map(f => `  ${f}`).join('\n')}\n`);
-
   console.log("Running eligibility checks...\n");
 
   const eligibleFiles = [];
@@ -696,18 +707,39 @@ async function run() {
     const absoluteTestPath = path.join(repoRoot, 'server', mirrorRelativePath);
     const relativePathToSrc = computeRelativePathToSrc(mirrorRelativePath);
 
+    // Extract exact imports so Gemini can't hallucinate module names
+    const sourceImports = extractImportPaths(fileContent);
+
     console.log(`  Computed relativePathToSrc: ${relativePathToSrc}`);
+    console.log(`  Source imports detected: ${sourceImports.join(', ') || '(none)'}`);
+
+    // Build a concrete mock path mapping for the prompt
+    const mockPathMapping = sourceImports
+      .map(p => {
+        // Resolve the mock path relative to the test file
+        // e.g. source imports '../utils/errorResponse' from src/controllers/restaurant/login.ts
+        // test is at tests/ai-generated/controllers/restaurant/login.test.ts
+        // correct mock path = '../../../src/utils/errorResponse'
+        const normalized = p
+          .replace(/^\.\.\//, '')   // strip leading ../
+          .replace(/^\.\//, '');    // strip leading ./
+        return `  jest.mock('${relativePathToSrc}${normalized}')`;
+      })
+      .join('\n');
 
     const initialPrompt = `
       Target TypeScript file location: ${localizedServerPath}
       Test file will be saved at: server/${mirrorRelativePath}
       CRITICAL: When importing from the src/ tree use this exact prefix: ${relativePathToSrc}
 
-      For example, if the source file imports from 'src/config/db', your test must import it as:
-      import { ... } from '${relativePathToSrc}config/db';
+      EXACT imports from the source file (you MUST use ONLY these module paths — never guess):
+      ${sourceImports.map(p => `  ${p}`).join('\n')}
 
-      You MUST mock every module that could make real network, database, Redis, S3, or email
-      calls. Use jest.mock() at the top of the file for each such module.
+      Suggested jest.mock() calls based on exact paths (use these verbatim):
+      ${mockPathMapping || '  (no relative imports detected)'}
+
+      You MUST mock every module that could make real network, database, Redis, S3, session,
+      or email calls. Use jest.mock() at the top of the file for each such module.
 
       Generate unit tests for the following TypeScript source file:
       \`\`\`typescript
@@ -739,14 +771,14 @@ async function run() {
     while (loopAttempt <= maxLoops && !passGates) {
       console.log(`\nQuality Gate Loop [${loopAttempt}/${maxLoops}]`);
 
-      // FIX 1: pass jestPathFlag into runGateA
       const gateA = await runGateA(absoluteTestPath, repoRoot, jestPathFlag);
       if (!gateA.passed) {
         console.log(`❌ Gate A Failed: ${gateA.reason}`);
-        // FIX 2: pass isInfra flag so healing loop can't misclassify config errors as bugs
         generatedTestCode = await handleHealingLoop(
           ai, localizedServerPath, absoluteTestPath,
-          fileContent, generatedTestCode, gateA.log, "STRUCTURAL_FAILURE", gateA.isInfra
+          fileContent, generatedTestCode, gateA.log,
+          "STRUCTURAL_FAILURE", gateA.isInfra,
+          sourceImports, relativePathToSrc
         );
         if (!generatedTestCode) break;
         loopAttempt++;
@@ -759,7 +791,9 @@ async function run() {
         console.log(`❌ Gate B Failed: ${gateB.reason}`);
         generatedTestCode = await handleHealingLoop(
           ai, localizedServerPath, absoluteTestPath,
-          fileContent, generatedTestCode, gateB.reason, "LOGICAL_FAILURE", false
+          fileContent, generatedTestCode, gateB.reason,
+          "LOGICAL_FAILURE", false,
+          sourceImports, relativePathToSrc
         );
         if (!generatedTestCode) break;
         loopAttempt++;
@@ -779,7 +813,7 @@ async function run() {
     console.log(`\nRunning final verification: ${absoluteTestPath}`);
     try {
       execSync(
-        `npx jest "${jestPathFlag}=${absoluteTestPath}" --passWithNoTests --config=jest.config.ts`,
+        `npx jest "${jestPathFlag}=${absoluteTestPath}" --passWithNoTests --config=jest.config.ts --forceExit`,
         { stdio: 'pipe', cwd: serverCwd }
       );
       console.log("🎉 All gates passed! Test verified and approved.\n");
@@ -795,12 +829,7 @@ async function run() {
       console.error(logOutput.substring(0, 5000));
       console.error("━━━ End final verification crash log ━━━\n");
 
-      await createJiraTicketsForFailures(
-        localizedServerPath,
-        logOutput,
-        "FINAL_VERIFICATION_FAILURE"
-      );
-
+      await createJiraTicketsForFailures(localizedServerPath, logOutput, "FINAL_VERIFICATION_FAILURE");
       process.exit(1);
     }
   }
