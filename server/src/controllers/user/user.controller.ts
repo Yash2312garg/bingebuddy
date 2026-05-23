@@ -6,7 +6,7 @@ import { RestaurantDao } from "../../dao/restaurant.dao";
 export const getRestaurantInformation = async(req:Request, res: Response)=>{
     try{
         const user= req.user;
-        // console.log(user)
+        console.log(user,"jjj")
          if (!user) {
             return res.status(401).json({ message: "Unauthorized" });
         }
