@@ -27,23 +27,21 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // FILE ELIGIBILITY — decides if a file needs unit tests at all
 // ─────────────────────────────────────────────────────────────
 
-// Files that NEVER need unit tests regardless of where they are
 const SKIP_FILENAME_PATTERNS = [
-  /\.d\.ts$/,              // type declaration files
-  /\.config\.(ts|js)$/,   // config files (jest.config, webpack.config etc)
-  /\.types\.(ts)$/,        // dedicated type files
-  /types\.ts$/,            // files named types.ts
-  /index\.ts$/,            // barrel/re-export files
-  /constants\.ts$/,        // constant definition files
-  /enums\.ts$/,            // enum-only files
-  /interfaces\.ts$/,       // interface-only files
-  /migrations?\//,         // database migration files
-  /seeds?\//,              // database seed files
-  /\.test\.ts$/,           // existing test files
-  /\.spec\.ts$/,           // existing spec files
+  /\.d\.ts$/,
+  /\.config\.(ts|js)$/,
+  /\.types\.(ts)$/,
+  /types\.ts$/,
+  /index\.ts$/,
+  /constants\.ts$/,
+  /enums\.ts$/,
+  /interfaces\.ts$/,
+  /migrations?\//,
+  /seeds?\//,
+  /\.test\.ts$/,
+  /\.spec\.ts$/,
 ];
 
-// Folders that contain testable business logic
 const TESTABLE_FOLDERS = [
   'src/controllers/',
   'src/services/',
@@ -54,42 +52,25 @@ const TESTABLE_FOLDERS = [
   'src/helpers/',
 ];
 
-// What makes a file worth testing — it must export functions/classes
-// with actual logic, not just types or re-exports
 const TESTABLE_CODE_PATTERNS = [
-  /export\s+(const|function|class|async function)/,  // exported functions/classes
-  /export\s+default\s+(function|class|async)/,       // default exports
-  /\.(get|post|put|delete|patch)\s*\(/,              // Express route handlers
-  /async\s+\w+\s*\(/,                                // async functions
-  /\bif\b|\bswitch\b|\bfor\b|\bwhile\b/,            // conditional/loop logic
-  /try\s*\{/,                                        // try/catch blocks
-];
-
-// What makes a file NOT worth testing — pure structure, no logic
-const SKIP_CODE_PATTERNS = [
-  // File is ONLY type/interface exports
-  /^(\s*(import|export)\s+(type|interface|enum)\s+[\w\s{},*]+from[\s\S]*?;?\s*)+$/,
+  /export\s+(const|function|class|async function)/,
+  /export\s+default\s+(function|class|async)/,
+  /\.(get|post|put|delete|patch)\s*\(/,
+  /async\s+\w+\s*\(/,
+  /\bif\b|\bswitch\b|\bfor\b|\bwhile\b/,
+  /try\s*\{/,
 ];
 
 function shouldSkipFile(filePath, fileContent) {
   const relativePath = filePath.replace(/\\/g, '/');
-  const fileName = path.basename(relativePath);
 
-  // 1. Check filename patterns — instant skip
   for (const pattern of SKIP_FILENAME_PATTERNS) {
     if (pattern.test(relativePath)) {
-      return {
-        skip: true,
-        reason: `Filename matches skip pattern: ${pattern}`,
-      };
+      return { skip: true, reason: `Filename matches skip pattern: ${pattern}` };
     }
   }
 
-  // 2. Must be in a testable folder
-  const inTestableFolder = TESTABLE_FOLDERS.some(folder =>
-    relativePath.includes(folder)
-  );
-
+  const inTestableFolder = TESTABLE_FOLDERS.some(folder => relativePath.includes(folder));
   if (!inTestableFolder) {
     return {
       skip: true,
@@ -97,11 +78,7 @@ function shouldSkipFile(filePath, fileContent) {
     };
   }
 
-  // 3. File must have actual logic worth testing
-  const hasTestableLogic = TESTABLE_CODE_PATTERNS.some(pattern =>
-    pattern.test(fileContent)
-  );
-
+  const hasTestableLogic = TESTABLE_CODE_PATTERNS.some(pattern => pattern.test(fileContent));
   if (!hasTestableLogic) {
     return {
       skip: true,
@@ -109,13 +86,12 @@ function shouldSkipFile(filePath, fileContent) {
     };
   }
 
-  // 4. Check if file is purely types/interfaces
   const lineCount = fileContent.split('\n').filter(l => l.trim()).length;
   const typeOnlyLines = fileContent.split('\n').filter(l =>
     l.trim().match(/^(export\s+)?(type|interface|enum)\s+/) ||
     l.trim().match(/^import\s+type\s+/) ||
     l.trim() === '' ||
-    l.trim().startsWith('//')  ||
+    l.trim().startsWith('//') ||
     l.trim().startsWith('*') ||
     l.trim().startsWith('/*')
   ).length;
@@ -127,7 +103,6 @@ function shouldSkipFile(filePath, fileContent) {
     };
   }
 
-  // 5. Too small to be worth testing (< 10 meaningful lines)
   const meaningfulLines = fileContent
     .split('\n')
     .filter(l => {
@@ -146,9 +121,7 @@ function shouldSkipFile(filePath, fileContent) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// AI ELIGIBILITY CHECK — ask Gemini if the file needs tests
-// This is the final gate — catches edge cases the static
-// analysis above might miss
+// AI ELIGIBILITY CHECK
 // ─────────────────────────────────────────────────────────────
 
 async function aiShouldGenerateTests(ai, fileContent, filePath) {
@@ -178,26 +151,22 @@ async function aiShouldGenerateTests(ai, fileContent, filePath) {
   });
 
   if (!response) {
-    // If AI check fails, default to generating tests (safe fallback)
     return { needsTests: true, reason: "AI eligibility check failed — defaulting to generate" };
   }
 
-  const result = JSON.parse(response.text);
-  return result;
+  return JSON.parse(response.text);
 }
 
 // ─────────────────────────────────────────────────────────────
-// FAILURE PARSING — splits Jest output into individual failures
+// FAILURE PARSING
 // ─────────────────────────────────────────────────────────────
 
 function parseFailuresFromLog(executionLogs) {
   const failures = [];
 
-  // Jest formats each failing test block starting with ● bullet
   const jestFailureBlocks = executionLogs.split(/\n\s*●\s+/).filter(Boolean);
 
   if (jestFailureBlocks.length > 1) {
-    // First element is preamble (FAIL src/...) — skip it
     const testBlocks = jestFailureBlocks.slice(1);
 
     for (const block of testBlocks) {
@@ -222,7 +191,6 @@ function parseFailuresFromLog(executionLogs) {
     return failures;
   }
 
-  // Fallback: TypeScript compile errors or non-standard output
   const errorMatches = executionLogs.match(
     /(error TS\d+:[^\n]+|TypeError:[^\n]+|ReferenceError:[^\n]+|SyntaxError:[^\n]+|Error:[^\n]+|FAIL [^\n]+)/gi
   );
@@ -248,7 +216,7 @@ function parseFailuresFromLog(executionLogs) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// JIRA — one ticket per distinct failure
+// JIRA
 // ─────────────────────────────────────────────────────────────
 
 async function createSingleJiraTicket(sourceFile, failureLog, failureSummary, failureType, ticketIndex, totalTickets) {
@@ -349,14 +317,20 @@ async function createJiraTicketsForFailures(sourceFile, executionLogs, failureTy
 }
 
 // ─────────────────────────────────────────────────────────────
-// GATE A — coverage check
+// FIX 1 + FIX 5 — GATE A: coverage check
+// Changes:
+//   • Captures stderr in addition to stdout so crash reason is never lost
+//   • Logs the full crash output to CI console (visible in GitHub Actions)
+//   • Switches from positional path arg to --testPathPattern to avoid
+//     Jest silently ignoring absolute paths outside rootDir
 // ─────────────────────────────────────────────────────────────
 
 async function runGateA(absoluteTestPath, repoRoot) {
   const tmpCoverageDir = path.join(repoRoot, 'server', 'coverage-tmp');
   try {
     execSync(
-      `npx jest ${absoluteTestPath} --coverage --coverageReporters=json-summary --coverageDirectory=${tmpCoverageDir} --config=jest.config.ts`,
+      // FIX 5: use --testPathPattern instead of positional path arg
+      `npx jest --testPathPattern="${absoluteTestPath}" --coverage --coverageReporters=json-summary --coverageDirectory=${tmpCoverageDir} --config=jest.config.ts`,
       { stdio: 'pipe', cwd: path.join(repoRoot, 'server') }
     );
 
@@ -378,10 +352,22 @@ async function runGateA(absoluteTestPath, repoRoot) {
 
     return { passed: true, log: "" };
   } catch (err) {
+    // FIX 1: capture stderr too, and surface crash log to CI console
+    const log = [
+      err.stdout?.toString() || '',
+      err.stderr?.toString() || '',
+      err.message || '',
+    ].filter(Boolean).join('\n');
+
+    // Always print so the GitHub Actions log shows the real Jest error
+    console.error("\n━━━ Gate A crash log (full Jest output) ━━━");
+    console.error(log.substring(0, 5000));
+    console.error("━━━ End Gate A crash log ━━━\n");
+
     return {
       passed: false,
       reason: "Jest crashed during coverage run.",
-      log: err.stdout?.toString() || err.message,
+      log,   // full combined log passed to healing loop
     };
   } finally {
     if (fs.existsSync(tmpCoverageDir)) {
@@ -434,11 +420,13 @@ async function runGateB(ai, sourceCode, testCode) {
 
 async function handleHealingLoop(ai, sourcePath, absoluteTestPath, sourceCode, badTestCode, errorLog, failureType) {
   const fixPrompt = `
-    A generated test failed quality validation.
+    A generated TypeScript Jest test failed quality validation.
     Failure Type: ${failureType}
-    Error Log: ${errorLog}
 
-    Source Code:
+    Full Error Log (read carefully — this is the real Jest/TypeScript output):
+    ${errorLog.substring(0, 4000)}
+
+    Source Code being tested:
     \`\`\`typescript
     ${sourceCode}
     \`\`\`
@@ -448,9 +436,16 @@ async function handleHealingLoop(ai, sourcePath, absoluteTestPath, sourceCode, b
     ${badTestCode}
     \`\`\`
 
+    Common causes to check first:
+    1. Wrong relative import paths — verify the depth of '../' matches the actual folder nesting.
+    2. Missing jest.mock() calls for any module that makes real network/DB calls.
+    3. TypeScript type errors — make sure mock shapes match the real types.
+    4. Modules imported but not mocked at all (session libraries, mailers, OTP libs, etc.).
+
     If this is a real application bug in the source code (not a test issue),
     set isRealBugInSourceCode to true and write a Jira report summary.
     Otherwise rewrite the test completely to satisfy coverage and mocking requirements.
+    Return the COMPLETE fixed test file — no partial snippets.
   `;
 
   const response = await callGeminiWithRetry(ai, fixPrompt, {
@@ -513,6 +508,26 @@ async function callGeminiWithRetry(ai, prompt, responseSchema) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// FIX 2 — correct relative path depth calculation
+// Original used split('/').length - 1 which counted the filename
+// segment, producing one too many '../' hops.
+// Fix: subtract 2 (one for the filename, one for zero-indexing the
+// folder count so '../'.repeat(n) reaches server/src correctly).
+//
+// Example:
+//   mirrorRelativePath = "tests/ai-generated/controllers/restaurant/login.test.ts"
+//   split('/').length  = 5   →  old depth = 4  →  ../../../../src/  ❌
+//                          →  new depth = 3  →  ../../../src/      ✅
+// ─────────────────────────────────────────────────────────────
+
+function computeRelativePathToSrc(mirrorRelativePath) {
+  // Number of directory levels deep the test file sits (excluding filename)
+  const segments = mirrorRelativePath.split('/');
+  const folderDepth = segments.length - 2; // -1 for filename, -1 because repeat(n) gives n hops
+  return '../'.repeat(folderDepth) + 'src/';
+}
+
+// ─────────────────────────────────────────────────────────────
 // MAIN
 // ─────────────────────────────────────────────────────────────
 
@@ -534,7 +549,6 @@ async function run() {
 
   console.log(`\nAnalyzing diff: ${baseSha} → ${headSha}\n`);
 
-  // ── Get ALL changed .ts files in the PR ──────────────────
   let allChangedFiles = [];
   try {
     allChangedFiles = execSync(`git diff --name-only ${baseSha} ${headSha}`)
@@ -557,7 +571,6 @@ async function run() {
 
   const repoRoot = path.resolve(__dirname, '../../..');
 
-  // ── Eligibility check — filter down to files worth testing ──
   console.log("Running eligibility checks...\n");
 
   const eligibleFiles = [];
@@ -573,14 +586,12 @@ async function run() {
 
     const fileContent = fs.readFileSync(absoluteFilePath, 'utf8');
 
-    // Stage 1: Static analysis — fast, no API call needed
     const staticCheck = shouldSkipFile(file, fileContent);
     if (staticCheck.skip) {
       skippedFiles.push({ file, reason: `[Static] ${staticCheck.reason}` });
       continue;
     }
 
-    // Stage 2: AI eligibility check — catches edge cases
     const aiCheck = await aiShouldGenerateTests(ai, fileContent, file);
     if (!aiCheck.needsTests) {
       skippedFiles.push({ file, reason: `[AI] ${aiCheck.reason}` });
@@ -590,7 +601,6 @@ async function run() {
     eligibleFiles.push({ file, fileContent, aiReason: aiCheck.reason });
   }
 
-  // ── Print eligibility summary ─────────────────────────────
   if (skippedFiles.length > 0) {
     console.log("⏭️  Skipped files (no tests needed):");
     skippedFiles.forEach(({ file, reason }) => {
@@ -612,7 +622,6 @@ async function run() {
   });
   console.log();
 
-  // ── Process each eligible file ────────────────────────────
   for (const { file, fileContent } of eligibleFiles) {
     console.log(`\n${'─'.repeat(60)}`);
     console.log(`Processing: ${file}`);
@@ -626,14 +635,21 @@ async function run() {
 
     const absoluteTestPath = path.join(repoRoot, 'server', mirrorRelativePath);
 
-    const testFolderDepth = mirrorRelativePath.split('/').length - 1;
-    const relativePathToSrc = '../'.repeat(testFolderDepth) + 'src/';
+    // FIX 2: use corrected depth calculation (see computeRelativePathToSrc above)
+    const relativePathToSrc = computeRelativePathToSrc(mirrorRelativePath);
 
-    // ── Initial generation ──────────────────────────────────
+    console.log(`  Computed relativePathToSrc: ${relativePathToSrc}`);
+
     const initialPrompt = `
       Target TypeScript file location: ${localizedServerPath}
       Test file will be saved at: server/${mirrorRelativePath}
       CRITICAL: When importing from the src/ tree use this exact prefix: ${relativePathToSrc}
+
+      For example, if the source file imports from 'src/config/db', your test must import it as:
+      import { ... } from '${relativePathToSrc}config/db';
+
+      You MUST mock every module that could make real network, database, Redis, S3, or email
+      calls. Use jest.mock() at the top of the file for each such module.
 
       Generate unit tests for the following TypeScript source file:
       \`\`\`typescript
@@ -658,9 +674,9 @@ async function run() {
     fs.writeFileSync(absoluteTestPath, generatedTestCode, 'utf8');
     console.log(`\n✍️  Test written to: ${absoluteTestPath}`);
 
-    // ── Self-healing quality gate loops ────────────────────
+    // FIX 4: bumped maxLoops from 2 → 3 to give the healer an extra attempt
     let loopAttempt = 1;
-    const maxLoops = 2;
+    const maxLoops = 3;
     let passGates = false;
 
     while (loopAttempt <= maxLoops && !passGates) {
@@ -704,7 +720,8 @@ async function run() {
     console.log(`\nRunning final verification: ${absoluteTestPath}`);
     try {
       execSync(
-        `npx jest ${absoluteTestPath} --passWithNoTests --config=jest.config.ts`,
+        // FIX 5 applied here too: --testPathPattern instead of positional arg
+        `npx jest --testPathPattern="${absoluteTestPath}" --passWithNoTests --config=jest.config.ts`,
         { stdio: 'pipe', cwd: path.join(repoRoot, 'server') }
       );
       console.log("🎉 All gates passed! Test verified and approved.\n");
@@ -716,6 +733,10 @@ async function run() {
       ].filter(Boolean).join('\n');
 
       console.log("\n🚨 Bug detected in final verification run!");
+      console.error("\n━━━ Final verification crash log ━━━");
+      console.error(logOutput.substring(0, 5000));
+      console.error("━━━ End final verification crash log ━━━\n");
+
       await createJiraTicketsForFailures(
         localizedServerPath,
         logOutput,
