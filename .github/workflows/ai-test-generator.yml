@@ -17,17 +17,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # fetch-depth 2 is enough to diff base vs head
-          # fetch-depth 0 is broken in Git 2.50+ on ubuntu-latest
-          fetch-depth: 2
-          # Checkout the actual PR head — not the temp merge commit
-          # GITHUB_SHA on pull_request events points to a merge commit
-          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          # ✅ Use GITHUB_TOKEN for authenticated checkout
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fetch base branch for diff
-        # Explicitly fetch the base branch so git diff can reference it
+        # ✅ Use authenticated URL — fixes "No such device or address"
         run: |
           git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
+        env:
+          # ✅ Inject token so git can authenticate
+          GIT_ASKPASS: echo
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Initialize Node.js
         uses: actions/setup-node@v4
@@ -48,23 +49,24 @@ jobs:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
-          # Pass explicit SHAs — script never uses HEAD^1
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        # exit(1) in the script blocks the PR merge here
         run: node scripts/ai-runner/generate-tests.js
 
       - name: Commit generated tests back to PR branch
-        # Only runs if quality gates passed (step above did not exit 1)
         if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
+          # ✅ Set authenticated remote URL so push works
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+
           if [ -n "$(git status --porcelain server/tests/ai-generated)" ]; then
             git add server/tests/ai-generated/
             git commit -m "chore(testing): auto-generated verified unit tests [skip ci]"
-            # Push to the PR head branch directly
             git push origin HEAD:${{ github.event.pull_request.head.ref }}
             echo "✅ Generated tests committed to PR branch."
           else
