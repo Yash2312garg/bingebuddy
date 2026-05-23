@@ -24,6 +24,169 @@ Do not wrap your output code in markdown code blocks inside the JSON string.
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ─────────────────────────────────────────────────────────────
+// FILE ELIGIBILITY — decides if a file needs unit tests at all
+// ─────────────────────────────────────────────────────────────
+
+// Files that NEVER need unit tests regardless of where they are
+const SKIP_FILENAME_PATTERNS = [
+  /\.d\.ts$/,              // type declaration files
+  /\.config\.(ts|js)$/,   // config files (jest.config, webpack.config etc)
+  /\.types\.(ts)$/,        // dedicated type files
+  /types\.ts$/,            // files named types.ts
+  /index\.ts$/,            // barrel/re-export files
+  /constants\.ts$/,        // constant definition files
+  /enums\.ts$/,            // enum-only files
+  /interfaces\.ts$/,       // interface-only files
+  /migrations?\//,         // database migration files
+  /seeds?\//,              // database seed files
+  /\.test\.ts$/,           // existing test files
+  /\.spec\.ts$/,           // existing spec files
+];
+
+// Folders that contain testable business logic
+const TESTABLE_FOLDERS = [
+  'src/controllers/',
+  'src/services/',
+  'src/models/',
+  'src/utils/',
+  'src/middleware/',
+  'src/dao/',
+  'src/helpers/',
+];
+
+// What makes a file worth testing — it must export functions/classes
+// with actual logic, not just types or re-exports
+const TESTABLE_CODE_PATTERNS = [
+  /export\s+(const|function|class|async function)/,  // exported functions/classes
+  /export\s+default\s+(function|class|async)/,       // default exports
+  /\.(get|post|put|delete|patch)\s*\(/,              // Express route handlers
+  /async\s+\w+\s*\(/,                                // async functions
+  /\bif\b|\bswitch\b|\bfor\b|\bwhile\b/,            // conditional/loop logic
+  /try\s*\{/,                                        // try/catch blocks
+];
+
+// What makes a file NOT worth testing — pure structure, no logic
+const SKIP_CODE_PATTERNS = [
+  // File is ONLY type/interface exports
+  /^(\s*(import|export)\s+(type|interface|enum)\s+[\w\s{},*]+from[\s\S]*?;?\s*)+$/,
+];
+
+function shouldSkipFile(filePath, fileContent) {
+  const relativePath = filePath.replace(/\\/g, '/');
+  const fileName = path.basename(relativePath);
+
+  // 1. Check filename patterns — instant skip
+  for (const pattern of SKIP_FILENAME_PATTERNS) {
+    if (pattern.test(relativePath)) {
+      return {
+        skip: true,
+        reason: `Filename matches skip pattern: ${pattern}`,
+      };
+    }
+  }
+
+  // 2. Must be in a testable folder
+  const inTestableFolder = TESTABLE_FOLDERS.some(folder =>
+    relativePath.includes(folder)
+  );
+
+  if (!inTestableFolder) {
+    return {
+      skip: true,
+      reason: `Not in a testable folder. Testable folders: ${TESTABLE_FOLDERS.join(', ')}`,
+    };
+  }
+
+  // 3. File must have actual logic worth testing
+  const hasTestableLogic = TESTABLE_CODE_PATTERNS.some(pattern =>
+    pattern.test(fileContent)
+  );
+
+  if (!hasTestableLogic) {
+    return {
+      skip: true,
+      reason: 'No testable logic found (no exported functions, classes, or business logic)',
+    };
+  }
+
+  // 4. Check if file is purely types/interfaces
+  const lineCount = fileContent.split('\n').filter(l => l.trim()).length;
+  const typeOnlyLines = fileContent.split('\n').filter(l =>
+    l.trim().match(/^(export\s+)?(type|interface|enum)\s+/) ||
+    l.trim().match(/^import\s+type\s+/) ||
+    l.trim() === '' ||
+    l.trim().startsWith('//')  ||
+    l.trim().startsWith('*') ||
+    l.trim().startsWith('/*')
+  ).length;
+
+  if (lineCount > 0 && typeOnlyLines / lineCount > 0.85) {
+    return {
+      skip: true,
+      reason: `File is ${Math.round(typeOnlyLines / lineCount * 100)}% type/interface definitions — no logic to test`,
+    };
+  }
+
+  // 5. Too small to be worth testing (< 10 meaningful lines)
+  const meaningfulLines = fileContent
+    .split('\n')
+    .filter(l => {
+      const t = l.trim();
+      return t && !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*') && t !== '{' && t !== '}';
+    }).length;
+
+  if (meaningfulLines < 10) {
+    return {
+      skip: true,
+      reason: `File has only ${meaningfulLines} meaningful lines — too small to warrant unit tests`,
+    };
+  }
+
+  return { skip: false };
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI ELIGIBILITY CHECK — ask Gemini if the file needs tests
+// This is the final gate — catches edge cases the static
+// analysis above might miss
+// ─────────────────────────────────────────────────────────────
+
+async function aiShouldGenerateTests(ai, fileContent, filePath) {
+  const eligibilityPrompt = `
+    You are a senior TypeScript engineer reviewing a file to decide if it needs unit tests.
+
+    File path: ${filePath}
+
+    File content:
+    \`\`\`typescript
+    ${fileContent.substring(0, 3000)}
+    \`\`\`
+
+    Respond with:
+    - needsTests: true if the file contains testable business logic (controllers, services, data access, utilities with logic, middleware with conditions)
+    - needsTests: false if the file is ONLY: type definitions, interfaces, enums, re-exports/barrel files, constants with no logic, configuration objects, empty scaffolding
+    - reason: one sentence explaining why
+  `;
+
+  const response = await callGeminiWithRetry(ai, eligibilityPrompt, {
+    type: "OBJECT",
+    properties: {
+      needsTests: { type: "BOOLEAN" },
+      reason: { type: "STRING" },
+    },
+    required: ["needsTests", "reason"],
+  });
+
+  if (!response) {
+    // If AI check fails, default to generating tests (safe fallback)
+    return { needsTests: true, reason: "AI eligibility check failed — defaulting to generate" };
+  }
+
+  const result = JSON.parse(response.text);
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────
 // FAILURE PARSING — splits Jest output into individual failures
 // ─────────────────────────────────────────────────────────────
 
@@ -31,7 +194,6 @@ function parseFailuresFromLog(executionLogs) {
   const failures = [];
 
   // Jest formats each failing test block starting with ● bullet
-  // e.g:  ● AuthService › verifyOtp › should throw on expired OTP
   const jestFailureBlocks = executionLogs.split(/\n\s*●\s+/).filter(Boolean);
 
   if (jestFailureBlocks.length > 1) {
@@ -40,16 +202,12 @@ function parseFailuresFromLog(executionLogs) {
 
     for (const block of testBlocks) {
       const lines = block.trim().split('\n');
-
-      // First line = full test name e.g. "AuthService › verifyOtp › should throw"
       const testName = lines[0].trim();
 
-      // Find the error line
       const errorLine = lines.find(l =>
         l.trim().match(/^(Error:|TypeError:|ReferenceError:|SyntaxError:|expect\(|Cannot|Failed|Received)/i)
       ) || lines[1] || '';
 
-      // Find the source file reference line
       const sourceLine = lines.find(l => l.includes('.ts:')) || '';
 
       failures.push({
@@ -65,7 +223,6 @@ function parseFailuresFromLog(executionLogs) {
   }
 
   // Fallback: TypeScript compile errors or non-standard output
-  // Split on common error patterns
   const errorMatches = executionLogs.match(
     /(error TS\d+:[^\n]+|TypeError:[^\n]+|ReferenceError:[^\n]+|SyntaxError:[^\n]+|Error:[^\n]+|FAIL [^\n]+)/gi
   );
@@ -107,7 +264,6 @@ async function createSingleJiraTicket(sourceFile, failureLog, failureSummary, fa
 
   const fileName = path.basename(sourceFile);
   const labelType = failureType.toLowerCase().replace(/_/g, '-');
-
   const issueSummary = `[AI ${failureType}] ${fileName} — ${failureSummary.substring(0, 100)}`;
 
   const issueDescription = [
@@ -180,16 +336,14 @@ async function createJiraTicketsForFailures(sourceFile, executionLogs, failureTy
   console.log(`\n🎫 Creating ${failures.length} Jira ticket(s) for ${failures.length} distinct failure(s)...`);
 
   for (let i = 0; i < failures.length; i++) {
-    const failure = failures[i];
     await createSingleJiraTicket(
       sourceFile,
-      failure.fullLog,
-      failure.summary,
+      failures[i].fullLog,
+      failures[i].summary,
       failureType,
       i + 1,
       failures.length
     );
-    // Small delay between Jira API calls to avoid rate limiting
     if (i < failures.length - 1) await sleep(500);
   }
 }
@@ -380,70 +534,102 @@ async function run() {
 
   console.log(`\nAnalyzing diff: ${baseSha} → ${headSha}\n`);
 
-  // ── Detect changed files ──────────────────────────────────
-  let changedFiles = [];
+  // ── Get ALL changed .ts files in the PR ──────────────────
+  let allChangedFiles = [];
   try {
-    changedFiles = execSync(`git diff --name-only ${baseSha} ${headSha}`)
+    allChangedFiles = execSync(`git diff --name-only ${baseSha} ${headSha}`)
       .toString()
       .trim()
       .split('\n')
-      .filter(file =>
-        file &&
-        (
-          file.startsWith('server/src/controllers/') ||
-          file.startsWith('server/src/models/')
-        ) &&
-        file.endsWith('.ts')
-      );
+      .filter(file => file && file.startsWith('server/src/') && file.endsWith('.ts'));
   } catch (err) {
     console.log("Could not compute git diff. Exiting cleanly.");
     console.error(err.message);
     return;
   }
 
-  if (changedFiles.length === 0) {
-    console.log("No target TypeScript changes detected. Skipping quality gates.");
+  if (allChangedFiles.length === 0) {
+    console.log("No TypeScript changes detected. Skipping quality gates.");
     return;
   }
 
-  console.log(`Detected changed files:\n${changedFiles.join('\n')}\n`);
+  console.log(`Changed .ts files in this PR:\n${allChangedFiles.map(f => `  ${f}`).join('\n')}\n`);
 
-  // __dirname = server/scripts/ai-runner/
-  // repoRoot  = three levels up
   const repoRoot = path.resolve(__dirname, '../../..');
 
-  // ── Process each changed file ─────────────────────────────
-  for (const file of changedFiles) {
+  // ── Eligibility check — filter down to files worth testing ──
+  console.log("Running eligibility checks...\n");
+
+  const eligibleFiles = [];
+  const skippedFiles = [];
+
+  for (const file of allChangedFiles) {
+    const absoluteFilePath = path.join(repoRoot, file);
+
+    if (!fs.existsSync(absoluteFilePath)) {
+      skippedFiles.push({ file, reason: "File not found on disk (deleted in this PR)" });
+      continue;
+    }
+
+    const fileContent = fs.readFileSync(absoluteFilePath, 'utf8');
+
+    // Stage 1: Static analysis — fast, no API call needed
+    const staticCheck = shouldSkipFile(file, fileContent);
+    if (staticCheck.skip) {
+      skippedFiles.push({ file, reason: `[Static] ${staticCheck.reason}` });
+      continue;
+    }
+
+    // Stage 2: AI eligibility check — catches edge cases
+    const aiCheck = await aiShouldGenerateTests(ai, fileContent, file);
+    if (!aiCheck.needsTests) {
+      skippedFiles.push({ file, reason: `[AI] ${aiCheck.reason}` });
+      continue;
+    }
+
+    eligibleFiles.push({ file, fileContent, aiReason: aiCheck.reason });
+  }
+
+  // ── Print eligibility summary ─────────────────────────────
+  if (skippedFiles.length > 0) {
+    console.log("⏭️  Skipped files (no tests needed):");
+    skippedFiles.forEach(({ file, reason }) => {
+      console.log(`  ✗ ${file}`);
+      console.log(`    → ${reason}`);
+    });
+    console.log();
+  }
+
+  if (eligibleFiles.length === 0) {
+    console.log("✅ No files require unit tests in this PR. Pipeline complete.");
+    return;
+  }
+
+  console.log(`🎯 Files selected for test generation (${eligibleFiles.length}):`);
+  eligibleFiles.forEach(({ file, aiReason }) => {
+    console.log(`  ✓ ${file}`);
+    console.log(`    → ${aiReason}`);
+  });
+  console.log();
+
+  // ── Process each eligible file ────────────────────────────
+  for (const { file, fileContent } of eligibleFiles) {
     console.log(`\n${'─'.repeat(60)}`);
     console.log(`Processing: ${file}`);
     console.log(`${'─'.repeat(60)}`);
 
-    const absoluteFilePath = path.join(repoRoot, file);
-
-    if (!fs.existsSync(absoluteFilePath)) {
-      console.warn(`File not found: ${absoluteFilePath} — skipping.`);
-      continue;
-    }
-
-    const codeContent = fs.readFileSync(absoluteFilePath, 'utf8');
-
-    // "server/src/controllers/auth.controller.ts" → "src/controllers/auth.controller.ts"
     const localizedServerPath = file.replace('server/', '');
 
-    // "src/controllers/auth.controller.ts" → "tests/ai-generated/controllers/auth.controller.test.ts"
     const mirrorRelativePath = localizedServerPath
       .replace('src/', 'tests/ai-generated/')
       .replace('.ts', '.test.ts');
 
-    // Absolute path where test file will be written
     const absoluteTestPath = path.join(repoRoot, 'server', mirrorRelativePath);
 
-    // How deep is the test file? Used to build relative import path back to src/
-    // tests/ai-generated/controllers/ = depth 3 → '../../../src/'
     const testFolderDepth = mirrorRelativePath.split('/').length - 1;
     const relativePathToSrc = '../'.repeat(testFolderDepth) + 'src/';
 
-    // ── Initial generation ────────────────────────────────
+    // ── Initial generation ──────────────────────────────────
     const initialPrompt = `
       Target TypeScript file location: ${localizedServerPath}
       Test file will be saved at: server/${mirrorRelativePath}
@@ -451,7 +637,7 @@ async function run() {
 
       Generate unit tests for the following TypeScript source file:
       \`\`\`typescript
-      ${codeContent}
+      ${fileContent}
       \`\`\`
     `;
 
@@ -472,7 +658,7 @@ async function run() {
     fs.writeFileSync(absoluteTestPath, generatedTestCode, 'utf8');
     console.log(`\n✍️  Test written to: ${absoluteTestPath}`);
 
-    // ── Self-healing quality gate loops ───────────────────
+    // ── Self-healing quality gate loops ────────────────────
     let loopAttempt = 1;
     const maxLoops = 2;
     let passGates = false;
@@ -480,18 +666,12 @@ async function run() {
     while (loopAttempt <= maxLoops && !passGates) {
       console.log(`\nQuality Gate Loop [${loopAttempt}/${maxLoops}]`);
 
-      // Gate A — coverage
       const gateA = await runGateA(absoluteTestPath, repoRoot);
       if (!gateA.passed) {
         console.log(`❌ Gate A Failed: ${gateA.reason}`);
         generatedTestCode = await handleHealingLoop(
-          ai,
-          localizedServerPath,
-          absoluteTestPath,
-          codeContent,
-          generatedTestCode,
-          gateA.log,
-          "STRUCTURAL_FAILURE"
+          ai, localizedServerPath, absoluteTestPath,
+          fileContent, generatedTestCode, gateA.log, "STRUCTURAL_FAILURE"
         );
         if (!generatedTestCode) break;
         loopAttempt++;
@@ -499,18 +679,12 @@ async function run() {
       }
       console.log("✅ Gate A Passed — coverage >= 80%");
 
-      // Gate B — logical audit
-      const gateB = await runGateB(ai, codeContent, generatedTestCode);
+      const gateB = await runGateB(ai, fileContent, generatedTestCode);
       if (!gateB.passed) {
         console.log(`❌ Gate B Failed: ${gateB.reason}`);
         generatedTestCode = await handleHealingLoop(
-          ai,
-          localizedServerPath,
-          absoluteTestPath,
-          codeContent,
-          generatedTestCode,
-          gateB.reason,
-          "LOGICAL_FAILURE"
+          ai, localizedServerPath, absoluteTestPath,
+          fileContent, generatedTestCode, gateB.reason, "LOGICAL_FAILURE"
         );
         if (!generatedTestCode) break;
         loopAttempt++;
@@ -526,7 +700,7 @@ async function run() {
       process.exit(1);
     }
 
-    // ── Final verification run ────────────────────────────
+    // ── Final verification run ──────────────────────────────
     console.log(`\nRunning final verification: ${absoluteTestPath}`);
     try {
       execSync(
@@ -542,8 +716,6 @@ async function run() {
       ].filter(Boolean).join('\n');
 
       console.log("\n🚨 Bug detected in final verification run!");
-      console.log("Creating Jira tickets for each failing test...\n");
-
       await createJiraTicketsForFailures(
         localizedServerPath,
         logOutput,

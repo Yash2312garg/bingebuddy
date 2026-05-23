@@ -28,7 +28,7 @@ export const login = async (req: Request, res: Response) => {
       res
     );
   }
-  // console.log( email, reference_id, phone_number )
+  console.log( email, reference_id, phone_number )
   let identifier: string;
   if (email) {
     if (!isValidEmail(email)) {
