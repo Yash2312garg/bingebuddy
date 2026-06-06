@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import NoMenuSection from "./NoMenuSection";
 import { useAppDispatch, useAppSelector } from "../hooks/redux";
 import { changeStatus, deleteMenuState, fetchMenu, type MenuState } from "../slices/menuSlice";
 import MenuCard from "../Components/MenuCard";
-import type { Menu } from "../Types/Menu";
+// import type { Menu } from "../Types/Menu";
 import "./index.css";
 import { useConfirm } from "../hooks/useConfirm";
 import { changeStatusMenu, deleteMenu } from "../api/privateApi/restaurantMenu.privateApi";
 
-const Menu: React.FC = () => {
+const Menus: React.FC = () => {
   const dispatch = useAppDispatch();
   const restaurant = useAppSelector((state) => state.auth.restaurant);
   const menus = useAppSelector((state) => state.menu.menus);
@@ -78,4 +78,4 @@ const Menu: React.FC = () => {
   );
 };
 
-export default Menu;
+export default Menus;

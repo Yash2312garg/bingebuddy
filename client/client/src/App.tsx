@@ -8,11 +8,13 @@ import LandingPage from "./LandingPage";
 import PreLoginSteps from "./PreLoginSteps";
 import PendingVerificationScreen from "./Verify_Otp/PendingVerific";
 import Home from "./Home";
-import Menu from "./Menu";
+import Menus from "./Menus";
 import CreateMenu from "./CreateMenu";
 import RootLayout from "./utils/RootLayout";
 import EditMenu from "./EditMenu";
 import Categories from "./Categories";
+import CreateCategory from "./CreateCategory";
+import EditCategory from "./EditCategory";
 
 const router = createBrowserRouter([
   {
@@ -51,7 +53,7 @@ const router = createBrowserRouter([
                 children: [
                   {
                     index: true,
-                    element: <Menu />,
+                    element: <Menus />,
                     handle: {
                       primaryHeading: "Menus Management",
                       secondaryHeading: "Create and manage different menus (e.g., Breakfast, Lunch, Dinner)",
@@ -82,8 +84,26 @@ const router = createBrowserRouter([
                 handle: {
                   primaryHeading: "Categories Management",
                   secondaryHeading: "Organize your menu items into categories",
+                  CTA_Button: { label: "+ Add Category", to: "/categories/create" },
+
                 },
               },
+              {
+                    path: "/categories/create",
+                    element: <CreateCategory />,
+                    handle: {
+                  primaryHeading: "Categories Management",
+                  secondaryHeading: "Organize your menu items into categories",
+                    },
+                  },
+                  {
+                    path: "categories/:categoryId",
+                    element: <EditCategory />,
+                    handle: {
+                      primaryHeading: "Categories Management",
+                      secondaryHeading: "Edit your category details",
+                    },
+                  }
             ],
           },
         ],

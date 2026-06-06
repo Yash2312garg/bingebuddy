@@ -1,0 +1,75 @@
+.CategoryRibbon-cntr {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  padding: 20px;
+  background-color: #fff;
+  align-items: center;
+  justify-content: flex-start;
+  border: 1px solid var(--muted-Grey-color);
+  border-radius: 16px;
+  gap: 16px;
+  box-sizing: border-box;
+}
+.CategoryRibbon-content-cntr {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+.CategoryRibbon-heading {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.CategoryRibbon-ordr {
+  background-color: var(--muted-Grey-color);
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  color: var(--Primary-Text-Color);
+  font-weight: 400;
+}
+.CategoryRibbon-title {
+  font-size: 1rem;
+  color: var(--Primary-Text-Color);
+  font-weight: 600;
+}
+.CategoryRibbon-desc {
+  font-size: 0.8rem;
+  color: var(--Secondary-Text-Color);
+  font-weight: 400;
+}
+.CategoryRibbon-actnbtn-wrapper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 16px;
+  flex-direction: row;
+  margin-left: auto;
+}
+
+.btn.Category-actn-btn-deactivate {
+  font-size: 0.9rem;
+  background-color: var(--muted-Grey-color);
+  color: #000;
+  width: fit-content;
+  padding: 8px 12px;
+}
+
+.btn.Category-actn-btn-deactivate:not(:disabled):hover {
+  background-color: var(--muted-Grey-color);
+  color: #000;
+}
+
+
+.btn.Category-actn-btn-deactivate.deactive,
+.btn.Category-actn-btn-deactivate.deactive:hover {
+  background-color: var(--Trace-Grey-Color);
+  color: var(--Secondary-Text-Color);
+}

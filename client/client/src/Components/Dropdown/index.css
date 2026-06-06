@@ -187,3 +187,11 @@
 .dropdown-option.selected:hover {
   background-color: rgba(112, 0, 255, 0.14);
 }
+
+
+.dropdown-option.disabled {
+  color: #adb5bd;
+  cursor: not-allowed;
+  pointer-events: none; /* Critical: Stops hover effects and ensures no rogue clicks pass through */
+  background-color: transparent;
+}

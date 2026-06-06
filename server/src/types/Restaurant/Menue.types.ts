@@ -21,7 +21,15 @@ export interface EditMenuBody {
 }
 
 export interface CategoryRequestData{
-    menue_id: string;
+    menu_id: string;
+    name:string;
+    short_desc: string;
+    long_desc: string;
+    display_order: string;
+    is_active: boolean;
+    rules:JSON;
+}
+export interface CategoryEditData{
     name:string;
     short_desc: string;
     long_desc: string;

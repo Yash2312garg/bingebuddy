@@ -1,6 +1,5 @@
 import { pool } from "../../database/db";
 import {
-  CategoryRequestData,
   EditMenuBody,
   MenueItemsRequestData,
   MenueRequestBody,
@@ -32,7 +31,6 @@ export class Menu {
       new_menue_data.rules || {},
     ];
 
-    console.log({ values: values, requestBody: new_menue_data });
     const result = await pool.query(query, values);
     console.log(result);
     if (result.rowCount && result.rowCount > 0) {
@@ -132,33 +130,7 @@ static async editMenu(data: EditMenuBody) {
 
     return result.rows;
   }
-  static async addNewCategory(new_category_data: CategoryRequestData) {
-    const query = `INSERT INTO categories (
-                    menue_id,
-                    name,
-                    short_desc,
-                    long_desc,
-                    display_order,
-                    is_active,
-                    rules) 
-                    VALUES($1, $2, $3, $4, $5, $6, $7)`;
 
-    const values = [
-      new_category_data.menue_id,
-      new_category_data.name,
-      new_category_data.short_desc || "",
-      new_category_data.long_desc || "",
-      new_category_data.display_order,
-      new_category_data.is_active,
-      new_category_data.rules || {},
-    ];
-    const result = await pool.query(query, values);
-    if (result.rowCount > 0) {
-      return result.rows;
-    } else {
-      return null;
-    }
-  }
 
   static async addNewMenueItems(new_item_data: MenueItemsRequestData) {
     const query = `INSERT INTO menue_items (
@@ -195,34 +167,7 @@ static async editMenu(data: EditMenuBody) {
     }
   }
 
-  static async createNewCombos(combo_data: any) {
-    const query = `INSERT INTO combos(
-        category_id,
-        name,
-        short_desc,
-        long_desc,
-        base_price,
-        is_available,
-        max_items,
-        min_items) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
-    const values = [
-      combo_data.category_id,
-      combo_data.name,
-      combo_data.short_desc,
-      combo_data.long_desc,
-      combo_data.base_price,
-      combo_data.is_available,
-      combo_data.max_items,
-      combo_data.min_items,
-    ];
 
-    const result = pool.query(query, values);
-    if (result.rowCount > 1) {
-      return result.rows[1];
-    } else {
-      return null;
-    }
-  }
   //   static async addAddons(new_addin_data:){
 
   //   }

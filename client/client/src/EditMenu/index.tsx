@@ -9,6 +9,7 @@ const EditMenu: React.FC = () => {
   const dispatch = useAppDispatch();
   const restaurant = useAppSelector((state) => state.auth.restaurant);
   const menus = useAppSelector((state) => state.menu.menus);
+  
   useEffect(() => {
     if (restaurant?.id && menus.length === 0) {
       dispatch(fetchMenu(restaurant.id));

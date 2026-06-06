@@ -6,7 +6,7 @@ import { addMenu,
     changeMenuStatus,
     editMenu
 
-} from "../../controllers/restaurant/menu";
+} from "../../controllers/restaurant/menu.controller";
 import { isRestaurantAutheticated } from "../../middleware/restaurantAuth";
 
 
