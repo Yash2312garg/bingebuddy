@@ -18,7 +18,7 @@ export const addMenu =async (req:Request, res:Response)=>{
             }
   
     }catch(e){
-        console.log(e)
+        // console.log(e)
         return res.status(500).json({msg:'Internal Server Error'})
     }
 }

@@ -1,7 +1,7 @@
-name: Phase 1 AI Unit Test Generator (Monorepo TypeScript)
+name: Phase 3 CI/CD — AI Quality Gate
 
 on:
-  push:
+  pull_request:
     branches:
       - development
 
@@ -9,57 +9,69 @@ permissions:
   contents: write
   issues: write
 
-defaults:
-  run:
-    working-directory: ./server
-
 jobs:
-  run-ai-tester:
+  run-quality-gate:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+          # ✅ Use GITHUB_TOKEN for authenticated checkout
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Initialize Node.js Environment
+      - name: Fetch base branch for diff
+        # ✅ Use authenticated URL — fixes "No such device or address"
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
+        env:
+          # ✅ Inject token so git can authenticate
+          GIT_ASKPASS: echo
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Initialize Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: './server/package-lock.json' # Exact lockfile location
+          cache-dependency-path: './server/package-lock.json'
 
-      - name: Install Project Dependencies
+      - name: Install dependencies
+        working-directory: ./server
         run: |
-          npm install
-          npm install @google/genai --save-dev
+          npm ci
+          # ✅ Safety net — install if missing from package.json
+          node -e "require('@google/genai')" 2>/dev/null || npm install @google/genai --no-save
 
-      - name: Execute Diff Analysis & Generate Tests
+      - name: Execute quality gates
+        working-directory: ./server
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JIRA_DOMAIN: ${{ secrets.JIRA_DOMAIN }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node scripts/ai-runner/generate-tests.js
 
-      - name: Run Global Test Suite
-        run: npm test -- --passWithNoTests || true
-
-      - name: Commit & Push Tests Back to Repository
+      - name: Commit generated tests back to PR branch
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd ..
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Check the entire tests/ directory for both new test suites and new Jira tickets
-          if [ -n "$(git status --porcelain server/tests)" ]; then
-            git add server/tests/
-            git commit -m "chore(testing): auto-generated TypeScript unit tests & bug tickets [skip ci]"
-            
-            # Clear out runtime locks/node caches, keeping our new tests and tickets safe
-            git reset --hard HEAD 
-            
-            git pull --rebase origin development
-            git push origin development
+
+          # ✅ Set authenticated remote URL so push works
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+
+          if [ -n "$(git status --porcelain server/tests/ai-generated)" ]; then
+            git add server/tests/ai-generated/
+            git commit -m "chore(testing): auto-generated verified unit tests [skip ci]"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+            echo "✅ Generated tests committed to PR branch."
           else
-            echo "No new TypeScript testing artifacts generated to commit."
+            echo "No new test files to commit."
           fi

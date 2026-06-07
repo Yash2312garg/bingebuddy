@@ -19,7 +19,7 @@ export const login = async (req: Request, res: Response) => {
 
   if (!email && !reference_id && !phone_number) {
     const newError = new Error(
-      "Request body is empty or missing required fields"
+      "Request body is empty or missing required field"
     );
     return return_response(
       newError,
@@ -28,7 +28,7 @@ export const login = async (req: Request, res: Response) => {
       res
     );
   }
-
+  console.log( email, reference_id, phone_number )
   let identifier: string;
   if (email) {
     if (!isValidEmail(email)) {
