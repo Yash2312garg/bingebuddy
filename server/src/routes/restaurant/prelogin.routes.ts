@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { preLoginInfo,prelogin_presignedUploadURL,confirm_upload,generatedownloadURL } from "../../controllers/restaurant/prelogin";
+import { preLoginInfo,prelogin_presignedUploadURL,confirm_upload,generatedownloadURL } from "../../controllers/restaurant/prelogin.controller";
 
 const router = Router();
 

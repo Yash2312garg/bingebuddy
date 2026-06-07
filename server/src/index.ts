@@ -5,6 +5,8 @@ import { redisClient } from './database/redis';
 import { RestaurantLoginSession } from './sessions/RestaurantLoginSession';
 import restaurantPreLoginRoutes from "./routes/restaurant/prelogin.routes"; 
 import restaurantMenuRoutes from "./routes/restaurant/menu.routes";
+import restaurantCategoryRoutes from "./routes/restaurant/categories.routes";
+
 import restaurantAuthRoutes from "./routes/auth/auth.routes";
 import restaurantInfoRoutes from "./routes/restaurant/restaurant.routes"
 import cookieParser from 'cookie-parser';
@@ -28,6 +30,7 @@ app.use( cors({
 
 app.use("/restaurant/prelogin",restaurantPreLoginRoutes);
 app.use("/restaurant/menu",restaurantMenuRoutes);
+app.use("/restaurant/categories",restaurantCategoryRoutes);
 app.use("/auth", restaurantAuthRoutes)
 app.use("/restaurant/info",restaurantInfoRoutes) 
 

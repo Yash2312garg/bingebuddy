@@ -1,8 +1,8 @@
 import { Router } from "express"
-import { checkPreLoginSession, getOtpStatus, login, resendOtp, verifyOtp } from "../../controllers/restaurant/login";
-import { createReferenceID } from "../../controllers/restaurant/prelogin";
-import { refreshToken } from "../../controllers/restaurant/refresh";
-import { logout } from "../../controllers/restaurant/logout";
+import { checkPreLoginSession, getOtpStatus, login, resendOtp, verifyOtp } from "../../controllers/restaurant/login.controller";
+import { createReferenceID } from "../../controllers/restaurant/prelogin.controller";
+import { refreshToken } from "../../controllers/restaurant/refresh.controller";
+import { logout } from "../../controllers/restaurant/logout.controller";
 
 const router = Router();
 
