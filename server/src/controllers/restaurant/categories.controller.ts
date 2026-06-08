@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { CategoryRequestData } from "../../types/Restaurant/Menue.types";
 import { Menu } from "../../models/restaurant/restaurant_menu.model";
 import { Category } from "../../models/restaurant/restaurant_category.model";
+import { NotificationService } from "../../modules/notifications";
+import { SignAccessArguments } from "../../services/restaurant/createwebtokens";
 
 export const addCategory = async (req: Request, res: Response) => {
   try {
@@ -48,12 +50,23 @@ interface CategoryStatusBody {
 export const changeCategoryStatus = async (req: Request, res: Response) => {
   try {
     const data: CategoryStatusBody = req.body;
-    console.log(data)
+    console.log(data);
     const success: boolean = await Category.changeCategoryStatus(
       data.category_id,
       data.status,
     );
     if (success) {
+      const user = req.user as SignAccessArguments;
+      NotificationService.triggerNotification({
+        recipientId: user.reference_id,
+        recipientType: "RESTAURANT",
+        eventType: "IN_APP",
+        title: data.status
+          ? "Category Activated 🟢"
+          : "Category Deactivated 🔴",
+        message: `Category ID ${data.category_id} status was modified to ${data.status ? "Active" : "Inactive"}.`,
+        priority: "MEDIUM",
+      }).catch((err) => console.error("Notification streaming failed:", err));
       return res.status(200).json({ msg: "succesfully changed the status" });
     }
     return res.status(503).json({ msg: "service unavailable" });
@@ -66,9 +79,18 @@ export const changeCategoryStatus = async (req: Request, res: Response) => {
 export const deleteCategory = async (req: Request, res: Response) => {
   try {
     const category_id: string = req.query.category_id as string;
-    console.log(req.query)
+    console.log(req.query);
     const success: boolean = await Category.deleteCategory(Number(category_id));
     if (success) {
+      const user = req.user as SignAccessArguments;
+      NotificationService.triggerNotification({
+        recipientId: user.reference_id,
+        recipientType: "RESTAURANT",
+        eventType: "IN_APP",
+        title: "Category Deleted 🗑️",
+        message: `Category ID ${category_id} was removed from your setup.`,
+        priority: "HIGH"
+      }).catch(err => console.error("Notification streaming failed:", err));
       return res.status(201).json({ msg: "succesfully deleted" });
     }
     return res.status(503).json({ msg: "service unavailable" });
@@ -81,7 +103,7 @@ export const deleteCategory = async (req: Request, res: Response) => {
 export const changeCategoryOrder = async (req: Request, res: Response) => {
   try {
     const { initial_order, final_order, category_id, menu_id } = req.body;
-    console.log(req.body)
+    console.log(req.body);
     const success: boolean = await Category.updateCategoryOrder(
       category_id,
       initial_order,
@@ -89,6 +111,15 @@ export const changeCategoryOrder = async (req: Request, res: Response) => {
       menu_id,
     );
     if (success) {
+      const user = req.user as SignAccessArguments;
+      NotificationService.triggerNotification({
+        recipientId: user.reference_id,
+        recipientType: "RESTAURANT",
+        eventType: "IN_APP",
+        title: "Display Order Updated 🔃",
+        message: "The layout sequence of your menu categories has been reorganized.",
+        priority: "LOW"
+      }).catch(err => console.error("Notification streaming failed:", err));
       return res.status(201).json({ msg: "succesfully changed" });
     }
     return res.status(503).json({ msg: "service unavailable" });
