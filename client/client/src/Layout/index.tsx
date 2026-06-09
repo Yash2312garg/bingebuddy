@@ -3,6 +3,10 @@ import PageHeading from "../Components/PageHeading";
 import Sidebar from "../Components/Sidebar";
 import "./index.css";
 import Btn from "../Components/Buttons/Button";
+// import { useNotificationStream } from "../hooks/useNotificationStream";
+import { useNotification } from "../hooks/useNotification";
+import { ToastContainer, type ToastMessage } from "../Components/ToastNotification.tsx";
+import { useEffect, useState } from "react";
 
 type RouteHandle = {
   primaryHeading?: string;
@@ -18,7 +22,10 @@ type CTA_Button ={
 
 const PostLoginLayouts: React.FC = () => {
   const matches = useMatches();
-
+  const restaurantId = "THEG-NSAD"
+  const { notifications, isConnected } = useNotification(restaurantId, "RESTAURANT");
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  
   const currentMatch = matches[matches.length - 1];
 
   const handle = currentMatch.handle as RouteHandle | undefined;
@@ -26,9 +33,30 @@ const PostLoginLayouts: React.FC = () => {
   const secondaryHeading: string | undefined = handle?.secondaryHeading;
   const cta:CTA_Button |undefined =  handle?.CTA_Button;
   const navigate = useNavigate()
+  useEffect(() => {
+    if (notifications.length > 0) {
+      // Snatch the latest real-time item that just appended to the top
+      const latestNotification = notifications[0];
+
+      // Convert it to a Toast payload layout map
+      const newToast: ToastMessage = {
+        id: latestNotification.id, // Using the unique Postgres ID
+        title: latestNotification.title,
+        message: latestNotification.message,
+        priority: latestNotification.priority
+      };
+
+      // Push it into the active floating visibility stack array
+      setToasts((prev) => [...prev, newToast]);
+    }
+  }, [notifications]);
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
   // const actionButton:string | null = currentMatch.handle?.actionButton;
   return (
     <div className="PostLoginLayouts-cntr">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       <Sidebar />
       <div className="PostLoginLayouts-right-cntr">
         <div className="PostLoginLayouts-header">
