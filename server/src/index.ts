@@ -4,7 +4,7 @@ import { pool } from './database/db';
 import { redisClient } from './database/redis';
 import { redisStreamClient } from './modules/notifications/redis.config';
 import { RestaurantLoginSession } from './sessions/RestaurantLoginSession';
-import { RedisConsumer,notificationRouter } from './modules/notifications';
+import { notificationRouter } from './modules/notifications';
 import restaurantPreLoginRoutes from "./routes/restaurant/prelogin.routes"; 
 import restaurantMenuRoutes from "./routes/restaurant/menu.routes";
 import restaurantCategoryRoutes from "./routes/restaurant/categories.routes";
@@ -52,9 +52,9 @@ const startServer = async ()=>{
     console.log('Connected to pg, succesfully')
     Client.release()
 
-    RedisConsumer.startWorkerLoop().catch((workerError) => {
-            console.error("🚨 CRITICAL: Notification Worker crashed unexpectedly:", workerError);
-    })
+    // RedisConsumer.startWorkerLoop().catch((workerError) => {
+    //         console.error("🚨 CRITICAL: Notification Worker crashed unexpectedly:", workerError);
+    // })
     app.listen(process.env.PORT||3000,()=>{
     console.log('Server is running on port ',process.env.PORT||3000);
 })
