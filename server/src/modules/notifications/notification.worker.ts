@@ -9,16 +9,28 @@ import { EmailProvider } from "./providers/email.provider";
 import { SmsProvider } from "./providers/sms.provider";
 
 /**
+ * RedisConsumer handles the background processing of notification events.
+ * It uses Redis Streams for reliable message queuing and distribution across instances.
+ */
+/**
  * RedisConsumer handles background processing of notification events.
  * Implements an advanced lifecycle including self-healing (XAUTOCLAIM) 
  * and poison pill isolation via a Dead Letter Queue (DLQ).
  */
 export class RedisConsumer {
+  // The unique identifier/key for our notification event stream log
   // Main ingress stream key name
   static getKey = () => "global_notifications";
   
+  // The name of the competing consumer group assigned to share this stream's workload
+  
   // Consumer group name sharing the workload
   static getGroupName = () => "notification_processing_group";
+
+  /**
+   * Initializes the consumer group on the Redis stream.
+   * This setup must run once before any workers attempt to pull data.
+   */
   
   // Maximum number of times a message can fail and be retried before eviction
   static getMaxRetries = () => 3;
@@ -35,6 +47,11 @@ export class RedisConsumer {
     const groupName = this.getGroupName();
 
     try {
+      // Create the group. 
+      // '$' means: Ignore historical data, only look for messages arriving AFTER group creation.
+      // MKSTREAM: true means: Automatically create an empty stream key if it doesn't exist yet.
+      await redisClient.xGroupCreate(streamKey, groupName, "$", { MKSTREAM: true });
+      console.log(`[Worker Init] Consumer group ${groupName} successfully validated.`);
       await redisClient.xGroupCreate(streamKey, groupName, "$", {
         MKSTREAM: true,
       });
@@ -42,6 +59,8 @@ export class RedisConsumer {
         `[Worker Init] Consumer group ${groupName} successfully validated.`,
       );
     } catch (err: any) {
+      // If the group already exists, Redis throws a "BUSYGROUP" error. 
+      // We safely catch and ignore this, as it means the environment is already properly configured.
       if (err.message && err.message.includes("BUSYGROUP")) {
         return; // Safe catch: group already created by another node running parallel code
       }
@@ -50,11 +69,17 @@ export class RedisConsumer {
   }
 
   /**
+   * Spawns the infinite event loop that continually polls Redis for new notifications.
+   */
+  /**
    * Main infinite processing engine executing self-healing lookups and event routing.
    */
   static async startWorkerLoop(): Promise<void> {
     const streamKey = this.getKey();
     const groupName = this.getGroupName();
+    
+    // Generate a unique consumer name for this specific process instance.
+    // Combining the hostname and Process ID (PID) ensures Redis can track individual worker crashes.
 
     // Unique name structure for tracking health: notification-worker:hostname:processId
     const consumerName = `notification-worker:${os.hostname()}:${process.pid}`;
@@ -240,10 +265,12 @@ export class RedisConsumer {
         break;
 
       case "EMAIL":
+        // Outsource processing to external SMTP/Email delivery services (e.g., SendGrid, SES)
         await EmailProvider.send(payload);
         break;
 
       case "SMS":
+        // Outsource processing to external SMS gateways (e.g., Twilio)
         await SmsProvider.send(payload);
         break;
 
