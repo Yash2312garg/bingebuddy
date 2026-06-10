@@ -26,6 +26,8 @@ export class RedisConsumer {
   
   // Consumer group name sharing the workload
   static getGroupName = () => "notification_processing_group";
+  static getMaxRetries = () => 3;
+  static getMinIdleTimeForClaim = () => 60000;
 
   /**
    * Initializes the consumer group on the Redis stream.
@@ -52,6 +54,12 @@ export class RedisConsumer {
       // MKSTREAM: true means: Automatically create an empty stream key if it doesn't exist yet.
       await redisClient.xGroupCreate(streamKey, groupName, "$", { MKSTREAM: true });
       console.log(`[Worker Init] Consumer group ${groupName} successfully validated.`);
+      await redisClient.xGroupCreate(streamKey, groupName, "$", {
+        MKSTREAM: true,
+      });
+      console.log(
+        `[Worker Init] Consumer group ${groupName} successfully validated.`,
+      );
       await redisClient.xGroupCreate(streamKey, groupName, "$", {
         MKSTREAM: true,
       });
