@@ -27,11 +27,13 @@ export class RedisConsumer {
   // Consumer group name sharing the workload
   static getGroupName = () => "notification_processing_group";
   static getMaxRetries = () => 3;
+  
+  // Minimum time (1 minute) a message must sit unacknowledged in a dead worker's 
+  // queue before this instance is allowed to rescue it.
   static getMinIdleTimeForClaim = () => 60000;
 
   /**
-   * Initializes the consumer group on the Redis stream.
-   * This setup must run once before any workers attempt to pull data.
+   * Initializes the consumer group on the Redis stream if it doesn't already exist.
    */
   
   // Maximum number of times a message can fail and be retried before eviction
