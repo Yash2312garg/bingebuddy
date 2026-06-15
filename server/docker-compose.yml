@@ -1,6 +1,8 @@
-services: 
+version: '3.8'
+
+services:
   # ========================================
-  # Development Service
+  # Development Service (API Engine)
   # ========================================
   app-dev:
     build: 
@@ -17,10 +19,10 @@ services:
       NODE_ENV: development
       DOCKER_ENV: 'true'
       DB_HOST: db
-      DB_PORT: 5432      # Overrides 'localhost' in your .env
-      REDIS_URL: redis://redis:6379 # Overrides '127.0.0.1' in your .env
+      DB_PORT: 5432      
+      REDIS_URL: redis://redis:6379 
     volumes:
-      - ./src:/usr/src/app/src:ro             # Match WORKDIR in Dockerfile
+      - ./src:/usr/src/app/src:ro             
       - ./package.json:/usr/src/app/package.json
       - ./.env:/usr/src/app/.env
     depends_on:
@@ -39,7 +41,38 @@ services:
           path: ./package.json
     restart: unless-stopped
     networks:
-      - bingebuddy-network # Use the same network for all services
+      - bingebuddy-network 
+
+  # ========================================
+  # 🟢 NEW: Development Notification Worker
+  # ========================================
+  notification-worker-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    # NO container_name here so we can scale it dynamically!
+    command: npx ts-node src/worker.ts 
+    env_file:
+      - .env
+    environment: 
+      NODE_ENV: development
+      DOCKER_ENV: 'true'
+      DB_HOST: db
+      DB_PORT: 5432      
+      REDIS_URL: redis://redis:6379 
+    volumes:
+      - ./src:/usr/src/app/src:ro # Allows hot-reloading code changes in your workers too            
+      - ./package.json:/usr/src/app/package.json
+      - ./.env:/usr/src/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - bingebuddy-network
 
   # ========================================
   # Production Service (Profiles: prod)
@@ -71,7 +104,42 @@ services:
     tmpfs:
       - /tmp
     networks:
-      - bingebuddy-network # Ensure prod uses the same network
+      - bingebuddy-network 
+    profiles:
+      - prod
+
+  # ========================================
+  # 🟢 NEW: Production Notification Worker
+  # ========================================
+  notification-worker-prod:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    # Overrides production entrypoint to run your compiled JS build
+    command: node dist/worker.js 
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: '${PROD_WORKER_MEMORY_LIMIT:-1G}' # Workers usually need less RAM than API layers
+          cpus: '${PROD_WORKER_CPU_LIMIT:-0.5}'
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - bingebuddy-network 
     profiles:
       - prod
 
