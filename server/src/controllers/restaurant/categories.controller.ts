@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { CategoryRequestData } from "../../types/Restaurant/Menue.types";
 import { Menu } from "../../models/restaurant/restaurant_menu.model";
 import { Category } from "../../models/restaurant/restaurant_category.model";
-import { NotificationService } from "../../modules/notifications";
+import { EventPublisher } from "../../services/rabbitmq/eventPublisher";
 import { SignAccessArguments } from "../../services/restaurant/createwebtokens";
 
 export const addCategory = async (req: Request, res: Response) => {
@@ -50,23 +50,22 @@ interface CategoryStatusBody {
 export const changeCategoryStatus = async (req: Request, res: Response) => {
   try {
     const data: CategoryStatusBody = req.body;
-    console.log(data);
     const success: boolean = await Category.changeCategoryStatus(
       data.category_id,
       data.status,
     );
     if (success) {
+      
       const user = req.user as SignAccessArguments;
-      NotificationService.triggerNotification({
-        recipientId: user.reference_id,
+      
+      EventPublisher.emitInAppNotification(user.reference_id, "IN_APP", {
         recipientType: "RESTAURANT",
-        eventType: "IN_APP",
-        title: data.status
-          ? "Category Activated 🟢"
-          : "Category Deactivated 🔴",
+        title: data.status? "Category Activated": "Category Deactivated",
         message: `Category ID ${data.category_id} status was modified to ${data.status ? "Active" : "Inactive"}.`,
-        priority: "MEDIUM",
-      }).catch((err) => console.error("Notification streaming failed:", err));
+        action_url: "",
+        metadata: {},
+        is_read: false
+      });
       return res.status(200).json({ msg: "succesfully changed the status" });
     }
     return res.status(503).json({ msg: "service unavailable" });
@@ -82,15 +81,16 @@ export const deleteCategory = async (req: Request, res: Response) => {
     console.log(req.query);
     const success: boolean = await Category.deleteCategory(Number(category_id));
     if (success) {
-      const user = req.user as SignAccessArguments;
-      NotificationService.triggerNotification({
-        recipientId: user.reference_id,
-        recipientType: "RESTAURANT",
-        eventType: "IN_APP",
-        title: "Category Deleted 🗑️",
-        message: `Category ID ${category_id} was removed from your setup.`,
-        priority: "HIGH"
-      }).catch(err => console.error("Notification streaming failed:", err));
+      // const user = req.user as SignAccessArguments;
+      // NotificationService.triggerNotification({
+      //   recipientId: user.reference_id,
+      //   recipientType: "RESTAURANT",
+      //   eventType: "IN_APP",
+      //   title: "Category Deleted 🗑️",
+      //   message: `Category ID ${category_id} was removed from your setup.`,
+      //   priority: "HIGH"
+      // }).catch(err => console.error("Notification streaming failed:", err));
+      console.log("need to establish inter service communication ");
       return res.status(201).json({ msg: "succesfully deleted" });
     }
     return res.status(503).json({ msg: "service unavailable" });
@@ -111,15 +111,17 @@ export const changeCategoryOrder = async (req: Request, res: Response) => {
       menu_id,
     );
     if (success) {
-      const user = req.user as SignAccessArguments;
-      NotificationService.triggerNotification({
-        recipientId: user.reference_id,
-        recipientType: "RESTAURANT",
-        eventType: "IN_APP",
-        title: "Display Order Updated 🔃",
-        message: "The layout sequence of your menu categories has been reorganized.",
-        priority: "LOW"
-      }).catch(err => console.error("Notification streaming failed:", err));
+      // const user = req.user as SignAccessArguments;
+      // NotificationService.triggerNotification({
+      //   recipientId: user.reference_id,
+      //   recipientType: "RESTAURANT",
+      //   eventType: "IN_APP",
+      //   title: "Display Order Updated 🔃",
+      //   message: "The layout sequence of your menu categories has been reorganized.",
+      //   priority: "LOW"
+      // }).catch(err => console.error("Notification streaming failed:", err));
+      console.log("need to establish inter service communication ");
+
       return res.status(201).json({ msg: "succesfully changed" });
     }
     return res.status(503).json({ msg: "service unavailable" });

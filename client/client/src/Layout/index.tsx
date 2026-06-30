@@ -22,7 +22,7 @@ type CTA_Button ={
 
 const PostLoginLayouts: React.FC = () => {
   const matches = useMatches();
-  const restaurantId = "THEG-NSAD"
+  const restaurantId = "DEL-CH101"
   const { notifications, isConnected } = useNotification(restaurantId, "RESTAURANT");
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   

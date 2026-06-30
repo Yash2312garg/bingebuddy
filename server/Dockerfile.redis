@@ -1,4 +1,5 @@
 # Use the lightweight Alpine version of Redis
+# ./api-gateway/niginx.conf 
 FROM redis:7.2-alpine
 
 # Copy your custom config into the container

@@ -1,8 +1,7 @@
+//server/src/controllers/restaurant/login.controller.ts
 import { Request, Response } from "express";
 import { return_response } from "../../utils/errorRespone";
 import { isValidEmail } from "../../utils/validations";
-import { sendEmail } from "../../services/email/sendEmail";
-import { getOtpEmailContent } from "../../services/email/getOTPEmailcontent";
 import {
   checkReferenceID,
   getAccountInformation,
@@ -13,6 +12,8 @@ import { OtpDao } from "../../dao/otp.dao";
 import { DeviceIdCookie } from "../../services/restaurant/getDeviceIdFromCookie";
 import { refreshTokenDao } from "../../dao/refreshToken.dao";
 import { AuthCookies } from "../../cookies/auth.cookies";
+import { EventPublisher } from "../../services/rabbitmq/eventPublisher";
+import { Notification_Templates_ENUM } from "../../types/notificationTemplate.types";
 
 export const login = async (req: Request, res: Response) => {
   const { email, reference_id, phone_number } = req.body;
@@ -28,8 +29,9 @@ export const login = async (req: Request, res: Response) => {
       res
     );
   }
-  console.log( email, reference_id, phone_number )
+
   let identifier: string;
+  
   if (email) {
     if (!isValidEmail(email)) {
       const err = new Error("Email format is not valid");
@@ -39,69 +41,78 @@ export const login = async (req: Request, res: Response) => {
     try {
       identifier = email;
       const identifier_type = "email";
+      
+      // Generate OTP
       let otp = null;
       try {
         otp = await OTPService.generateAndStore(identifier);
-        console.log("otp",otp)
       } catch (err) {
         if (err instanceof Error) {
           console.error("Failed to generate OTP:", err.message);
           return res.status(400).json({ message: err.message });
-        } else {
-          console.error("Unknown error:", err);
         }
       }
+      
       if (!otp) {
-        return res.send(404).json({ message: "failed to generate OTP" });
+        return res.status(404).json({ message: "failed to generate OTP" });
       }
-      const data = getOtpEmailContent(otp, 10);
-      const emailStatus = await sendEmail(
-        email,
-        "OTP Verification",
-        data.text,
-        data.html
-      );
-      req.session.otpIdentifier = identifier;
-      req.session.otpGeneratedAt = Date.now();
-      req.session.identifierType = identifier_type;
-      if (emailStatus) {
-        console.log(req.session);
+
+      // ===== CHANGED: Publish to RabbitMQ instead of sending directly =====
+      try {
+        await EventPublisher.emitEmailNotification(
+          email,
+          Notification_Templates_ENUM.Auth_Otp_Request,
+          {
+            otp,
+            email,
+            company_name: "BingeBuddy",
+            minutes: "10", // OTP expiry in minutes
+          }
+        );
+
+        // Assume email was queued successfully
+        req.session.otpIdentifier = identifier;
+        req.session.otpGeneratedAt = Date.now();
+        req.session.identifierType = identifier_type;
+
         return res.status(200).json({
           success: true,
           message: "OTP sent successfully to your email.",
           user: { email },
         });
-      } else {
-        const err = new Error("Failed to send email");
+
+      } catch (publishError) {
+        console.error("Failed to publish email event:", publishError);
         return return_response(
-          err,
-          "Error sending verification email.",
+          publishError as Error,
+          "Error queueing email notification.",
           500,
           res
         );
       }
+
     } catch (error) {
-      console.error("Error in sendEmail service:", error);
+      console.error("Error in login:", error);
       return return_response(
         error as Error,
-        "An unexpected error occurred while sending the email.",
+        "An unexpected error occurred.",
         500,
         res
       );
     }
+
   } else if (phone_number) {
     req.session.identifierType = "phone";
     return res
       .status(501)
       .json({ message: "OTP via phone number is not yet implemented." });
+
   } else if (reference_id) {
     const userAccountData = await checkReferenceID(reference_id);
-    const identifier_type = "reference_id";
     try {
       if (userAccountData) {
-        req.session.identifierType = identifier_type;
-
-        return res.status(200);
+        req.session.identifierType = "reference_id";
+        return res.status(200).json({ message: "Login via reference_id" });
       } else {
         return res.status(404).json({ message: "Not Found" });
       }
@@ -117,7 +128,6 @@ export const login = async (req: Request, res: Response) => {
     res
   );
 };
-
 export const verifyOtp = async (req: Request, res: Response) => {
   const { otp } = req.body;
   if (!otp) {
@@ -141,28 +151,32 @@ export const verifyOtp = async (req: Request, res: Response) => {
             //remove the ongoing session
             await OTPService.clear(identifier);
           } else if (userAuthStatus.auth_status === "APPROVED") {
-            const deviceId = DeviceIdCookie.getOrCreateDeviceId(req,res);
+            const deviceId = DeviceIdCookie.getOrCreateDeviceId(req, res);
             const accessToken = Restaurant_JWT.signAccessToken(
               {
                 email: userAuthStatus.email,
                 phone: userAuthStatus.phone,
                 reference_id: userAuthStatus.reference_id,
               },
-              "15m"
+              "15m",
             );
             const refreshToken = Restaurant_JWT.signRefreshToken(
               {
                 email: userAuthStatus.email,
                 phone: userAuthStatus.phone,
                 reference_id: userAuthStatus.reference_id,
-                deviceId
+                deviceId,
               },
-              deviceId
+              deviceId,
             );
 
-            await refreshTokenDao.storeToken(userAuthStatus.reference_id,deviceId,refreshToken)
-            AuthCookies.setAccessTokenCookies(res,accessToken);
-            AuthCookies.setRefreshTokenCookies(res,refreshToken);
+            await refreshTokenDao.storeToken(
+              userAuthStatus.reference_id,
+              deviceId,
+              refreshToken,
+            );
+            AuthCookies.setAccessTokenCookies(res, accessToken);
+            AuthCookies.setRefreshTokenCookies(res, refreshToken);
             await OTPService.clear(identifier);
           }
           return res.status(200).json({
@@ -221,37 +235,24 @@ export const resendOtp = async (req: Request, res: Response) => {
         if (!otp) {
           return res.send(404).json({ message: "failed to generate OTP" });
         }
-        const data = getOtpEmailContent(otp, 10);
-        const emailStatus = await sendEmail(
+        await EventPublisher.emitEmailNotification(
           identifier,
-          "OTP Verification",
-          data.text,
-          data.html
+         Notification_Templates_ENUM.Auth_Otp_Request,
+          {
+            otp,
+            identifier,
+            company_name: "BingeBuddy",
+            minutes: "10", // OTP expiry in minutes
+          }
         );
         req.session.otpGeneratedAt = Date.now();
-        if (emailStatus) {
-          console.log(req.session);
-          return res.status(200).json({
-            success: true,
-            message: "OTP sent successfully to your email.",
-            user: { identifier },
-          });
-        } else {
-          const err = new Error("Failed to send email");
-          return return_response(
-            err,
-            "Error sending verification email.",
-            500,
-            res
-          );
-        }
       } catch (error) {
         console.error("Error in sendEmail service:", error);
         return return_response(
           error as Error,
           "An unexpected error occurred while sending the email.",
           500,
-          res
+          res,
         );
       }
     } else if (identifier_type === "phone_number") {
@@ -285,39 +286,39 @@ export const resendOtp = async (req: Request, res: Response) => {
 
 export const checkPreLoginSession = async (req: Request, res: Response) => {
   try {
-        const isSessionActive = req.session.otpIdentifier
-        if (isSessionActive || isSessionActive !==undefined){
-            return res.status(200).json({isActive: true,session: req.session.otpIdentifier})
-        }else{
-            return res.status(200).json({isActive: false})
-
-        }
-} catch (err) {
+    const isSessionActive = req.session.otpIdentifier;
+    if (isSessionActive || isSessionActive !== undefined) {
+      return res
+        .status(200)
+        .json({ isActive: true, session: req.session.otpIdentifier });
+    } else {
+      return res.status(200).json({ isActive: false });
+    }
+  } catch (err) {
     return res
       .status(500)
       .json({ message: "Internal Server Error", error: err });
   }
 };
 
-export const getOtpStatus = async (req: Request, res:Response) =>{
-
-  try{
+export const getOtpStatus = async (req: Request, res: Response) => {
+  try {
     const identifier = req.session.otpIdentifier;
-    console.log("helo")
-    if(!identifier){
+    console.log("helo");
+    if (!identifier) {
       return res.status(400).json({
-        message: "Session Expired"
-      })
+        message: "Session Expired",
+      });
     }
 
     const ttl = await OTPService.getOTPTTL(identifier);
     const cooldownTTL = await OtpDao.getCoolDownTTL(identifier);
 
     return res.status(200).json({
-            otpExpiresIn: ttl,          // remaining OTP validity
-      cooldownRemaining: cooldownTTL > 0 ? cooldownTTL : 0
-    })
-  }catch(err){
-    return res.status(500).json({message:"Internal Server Error"})
+      otpExpiresIn: ttl, // remaining OTP validity
+      cooldownRemaining: cooldownTTL > 0 ? cooldownTTL : 0,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};

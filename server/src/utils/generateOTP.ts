@@ -98,7 +98,6 @@ export class OTPService {
     }
 
     static async verify(identifier: string, otp: string): Promise<boolean> {
-        console.log(otp,typeof otp)
 
         const storedHashedOTP = await OtpDao.getOTP(identifier);
         if (!storedHashedOTP) {

@@ -46,7 +46,7 @@
     "*/*",
     "types",
     "jest.config.ts" 
-
+, "../notification-service/src/worker.ts"
   ],
   "exclude": [
     "node_modules",
