@@ -15,13 +15,21 @@ export const addCategory = async (req: Request, res: Response) => {
         .status(400)
         .json({ msg: `Menu with id: ${data.menu_id} not found` });
     }
-    console.log("data", data);
     const add_data = await Category.addNewCategory(data);
-    console.log("add_data", add_data);
-
+    
     if (!add_data) {
       return res.status(404).json({ msg: `Database Error Occured ` });
     }
+    const user = req.user as SignAccessArguments;
+
+    EventPublisher.emitInAppNotification(user.reference_id, "IN_APP", {
+        recipientType: "RESTAURANT",
+        title: "New Category",
+        message: `Category ID ${add_data.id} was added`,
+        action_url: "",
+        metadata: {},
+        is_read: false
+      });
     return res.status(201).json({ msg: "new Category added", data: add_data });
   } catch (e) {
     console.log(e);
@@ -81,16 +89,16 @@ export const deleteCategory = async (req: Request, res: Response) => {
     console.log(req.query);
     const success: boolean = await Category.deleteCategory(Number(category_id));
     if (success) {
-      // const user = req.user as SignAccessArguments;
-      // NotificationService.triggerNotification({
-      //   recipientId: user.reference_id,
-      //   recipientType: "RESTAURANT",
-      //   eventType: "IN_APP",
-      //   title: "Category Deleted 🗑️",
-      //   message: `Category ID ${category_id} was removed from your setup.`,
-      //   priority: "HIGH"
-      // }).catch(err => console.error("Notification streaming failed:", err));
-      console.log("need to establish inter service communication ");
+      const user = req.user as SignAccessArguments;
+      EventPublisher.emitInAppNotification(user.reference_id, "IN_APP", {
+        recipientType: "RESTAURANT",
+        title:"Category Deleted",
+        message: `Category ID ${category_id} was deleted.`,
+        action_url: "",
+        metadata: {},
+        is_read: false
+      });
+      // console.log("need to establish inter service communication ");
       return res.status(201).json({ msg: "succesfully deleted" });
     }
     return res.status(503).json({ msg: "service unavailable" });
@@ -111,16 +119,15 @@ export const changeCategoryOrder = async (req: Request, res: Response) => {
       menu_id,
     );
     if (success) {
-      // const user = req.user as SignAccessArguments;
-      // NotificationService.triggerNotification({
-      //   recipientId: user.reference_id,
-      //   recipientType: "RESTAURANT",
-      //   eventType: "IN_APP",
-      //   title: "Display Order Updated 🔃",
-      //   message: "The layout sequence of your menu categories has been reorganized.",
-      //   priority: "LOW"
-      // }).catch(err => console.error("Notification streaming failed:", err));
-      console.log("need to establish inter service communication ");
+      const user = req.user as SignAccessArguments;
+      EventPublisher.emitInAppNotification(user.reference_id, "IN_APP", {
+        recipientType: "RESTAURANT",
+        title:"Category Order Changed",
+        message: `Order changed from ${initial_order} to ${final_order} of Category ${category_id}.`,
+        action_url: "",
+        metadata: {},
+        is_read: false
+      });
 
       return res.status(201).json({ msg: "succesfully changed" });
     }
@@ -155,6 +162,15 @@ export const editCategory = async (req: Request, res: Response) => {
       category_id,
     );
     if (updateCategory) {
+      const user = req.user as SignAccessArguments;
+      EventPublisher.emitInAppNotification(user.reference_id, "IN_APP", {
+        recipientType: "RESTAURANT",
+        title:"Category Information Edited",
+        message: `The category "${name}" has been updated successfully. Your changes are now live.`,
+        action_url: "",
+        metadata: {},
+        is_read: false
+      });
       return res.status(200).json({
         msg: "Successfully updated menu",
         data: updateCategory,

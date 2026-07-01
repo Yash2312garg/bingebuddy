@@ -40,12 +40,13 @@ const PostLoginLayouts: React.FC = () => {
 
       // Convert it to a Toast payload layout map
       const newToast: ToastMessage = {
-        id: latestNotification.id, // Using the unique Postgres ID
+        id: crypto.randomUUID(), // Using the unique Postgres ID
         title: latestNotification.title,
         message: latestNotification.message,
-        priority: latestNotification.priority
+        priority: "LOW"
       };
 
+      console.log("notification updated")
       // Push it into the active floating visibility stack array
       setToasts((prev) => [...prev, newToast]);
     }

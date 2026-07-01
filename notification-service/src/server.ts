@@ -1,8 +1,8 @@
 import app from './app';
 import rabbitMQClient from './config/rabbitmq';
-import { NotificationConsumer } from './services/notificationConsumer';
-import { EmailConsumer } from './services/emailConsumer';
-
+import { NotificationConsumer } from './services/consumers/notification.consumer';
+import { EmailConsumer } from './services/consumers/email.consumer';
+import { DatabaseMaintainenceJobs } from './jobs/databaseMaintenance';
 const PORT = process.env.PORT || 3001;
 
 // Global flag to track if service is fully initialized
@@ -11,7 +11,9 @@ let isServiceReady = false;
 async function bootstrap() {
   try {
     console.log('🔄 Starting Notification Service bootstrap...');
-
+    
+    
+    DatabaseMaintainenceJobs.start();
     // 1. Connect to RabbitMQ
     console.log('📡 Connecting to RabbitMQ...');
     await rabbitMQClient.connect();

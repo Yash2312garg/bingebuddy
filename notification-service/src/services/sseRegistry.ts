@@ -1,5 +1,5 @@
 import type { Response } from "express";
-import { NotificationConsumer } from "./notificationConsumer";
+import { NotificationConsumer } from "./consumers/notification.consumer";
 
 interface SseClient {
   res: Response;

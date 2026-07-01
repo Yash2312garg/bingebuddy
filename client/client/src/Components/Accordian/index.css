@@ -10,6 +10,8 @@
     border-right: 1px solid var( --Trace-Grey-Color);
     box-sizing: border-box;
     padding: 10px;
+    overflow-y: auto;
+    height: 100%;
 }
 .according-item-wrpr{
     width: 100%;

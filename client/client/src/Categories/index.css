@@ -9,4 +9,7 @@
     width: 100%;
     gap: 20px;
     /* height: ; */
+    height: 100%;
+    overflow-y: auto;
+
 }
