@@ -109,7 +109,7 @@ static async editMenu(data: EditMenuBody) {
   return null;
 }
 
-  static async getAllMenu(restaurant_id: number) {
+  static async getAllMenu(restaurant_id: string) {
     const query = `
     SELECT 
       id,

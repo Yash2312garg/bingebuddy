@@ -1,7 +1,7 @@
 import { pool } from "../../database/db"
 import { PreLoginRestaurantDetails } from "../../controllers/restaurant/Types"
 export const addRestaurantdata = async (id: string, data: PreLoginRestaurantDetails): Promise<string | null> => {
-    const query = `INSERT INTO restaurant_details (user_id, name, description,pan, fassai, adhaar_card, gst) VALUES(
+    const query = `INSERT INTO restaurant_details (id, name, description,pan, fassai, adhaar_card, gst) VALUES(
     $1,$2,$3,$4,$5,$6,$7 
 ) RETURNING *`
     const values = [id, data.name, data.description, data.pan, data.fassai, data.adhaar_card, data.gst]

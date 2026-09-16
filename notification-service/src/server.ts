@@ -3,6 +3,7 @@ import rabbitMQClient from './config/rabbitmq';
 import { NotificationConsumer } from './services/consumers/notification.consumer';
 import { EmailConsumer } from './services/consumers/email.consumer';
 import { DatabaseMaintainenceJobs } from './jobs/databaseMaintenance';
+import "./crons/partition"
 const PORT = process.env.PORT || 3001;
 
 // Global flag to track if service is fully initialized

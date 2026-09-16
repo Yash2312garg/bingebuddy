@@ -20,12 +20,12 @@ export class SseRegistry {
   private static clients = new Map<string, Map<string, SseClient>>();
     private static heartbeatTimer:ReturnType<typeof setInterval>|null = null;
 
-  /*---------------------------------------------------------------------------
-    adding new client connections into the map initialised
-    if the new user starts the connections a new map will be initialized and then new connections are
-    added in the map generated. any single client can have multiple connections across  different 
-    tabs and browsers
-  ---------------------------------------------------------------------------*/
+  // /*---------------------------------------------------------------------------
+  //   adding new client connections into the map initialised
+  //   if the new user starts the connections a new map will be initialized and then new connections are
+  //   added in the map generated. any single client can have multiple connections across  different 
+  //   tabs and browsers
+  // ---------------------------------------------------------------------------*/
 
   static async addClient(userId: string, connectionId: string, res: Response) {
     if (!this.clients.has(userId)) {

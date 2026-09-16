@@ -1,152 +1,305 @@
-import React, {  useState } from "react";
-import type { AccordianItem,AccordianProps } from "../../Types/Accordian";
-import "./index.css"
-import { useNavigate } from "react-router-dom";
-// const DUMMY_DATA:AccordianItem[] = [
-//     {
-//         id: "1",
-//         name: "dashbaoard",
-//         label:"Dashboard",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//         {
-//         id: "2",
-//         name: "orders",
-//         label:"Orders",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[
-//     {
-//         id: "3",
-//         name: "overview",
-//         label:"Overview",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//         {
-//         id: "4",
-//         name: "new_orders",
-//         label:"New Orders",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
 
-//         {
-//         id: "5",
-//         name: "active_orders",
-//         label:"Active Orders",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//         {
-//         id: "6",
-//         name: "order_history",
-//         label:"Order History",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//         ]
-//     },
-//         {
-//         id: "7",
-//         name: "analytics",
-//         label:"Analytics",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//             {
-//         id: "8",
-//         name: "menus",
-//         label:"Menus",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//             {
-//         id: "9",
-//         name: "categories",
-//         label:"Categories",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//     {
-//         id: "10",
-//         name: "items",
-//         label:"Items",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//             {
-//         id: "11",
-//         name: "add_ons",
-//         label:"Add-ons",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//     {
-//         id: "12",
-//         name: "variants",
-//         label:"Variants",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//     {
-//         id: "13",
-//         name: "combos",
-//         label:"Combos",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
-//     {
-//         id: "14",
-//         name: "settings",
-//         label:"Settings",
-//         onClick: ()=>{console.log("clicked")},
-//         children:[]
-//     },
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
-// ]
+import type { NavigationItem } from "../../Types/Accordian";
 
-const Accordian: React.FC<AccordianProps> = ({ options }) => {
-  const [openItems, setOpenItems] = useState<Record<string, boolean>>({})
-  const navigate = useNavigate();
-  const toggleItem = (id: string) => {
-    setOpenItems((prev) => ({
-      ...prev,
-      [id]: !prev[id]
-    }))
+import "./index.css";
+
+interface AccordianProps {
+  options: NavigationItem[];
+}
+
+/* =========================================================
+   Check whether an item contains the active route
+   ========================================================= */
+
+const containsActivePath = (
+  item: NavigationItem,
+  pathname: string
+): boolean => {
+  if (item.path === pathname) {
+    return true;
   }
-    const handleClick = (item: AccordianItem) => {
-    // toggle children
-    if (item.children.length > 0) {
-      toggleItem(item.id);
+
+  return (
+    item.children?.some((child) =>
+      containsActivePath(child, pathname)
+    ) ?? false
+  );
+};
+
+
+
+/* =========================================================
+   Find all parents of the active route
+   ========================================================= */
+
+const findActiveParents = (
+  items: NavigationItem[],
+  pathname: string,
+  parents: string[] = []
+): string[] => {
+  for (const item of items) {
+    // Current item is the active route
+    if (item.path === pathname) {
+      return parents;
     }
 
-    // navigate if path exists
-    if (item.name) {
-      navigate("/"+item.name);
+    // Search children recursively
+    if (item.children?.length) {
+      const result = findActiveParents(
+        item.children,
+        pathname,
+        [...parents, item.id]
+      );
+
+      if (result.length > parents.length) {
+        return result;
+      }
+    }
+  }
+
+  return [];
+};
+
+
+/* =========================================================
+   Recursive Navigation Item
+   ========================================================= */
+
+interface NavigationItemProps {
+  item: NavigationItem;
+  level: number;
+
+  expandedItems: Record<string, boolean>;
+
+  setExpandedItems: React.Dispatch<
+    React.SetStateAction<Record<string, boolean>>
+  >;
+}
+
+const NavigationItemComponent: React.FC<NavigationItemProps> = ({
+  item,
+  level,
+  expandedItems,
+  setExpandedItems,
+}) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const hasChildren = Boolean(item.children?.length);
+  // console.log(location.pathname)
+
+  const isActive = item.path && location.pathname.includes(item.path)
+
+  const hasActiveChild =
+    item.children?.some((child) =>
+      containsActivePath(child, location.pathname)
+    ) ?? false;
+
+  const isExpanded = expandedItems[item.id] ?? false;
+
+
+  /* =======================================================
+     Handle click
+     ======================================================= */
+
+  const handleClick = () => {
+    /*
+     * Parent item
+     *
+     * Example:
+     *
+     * Orders >
+     *
+     * Clicking only expands/collapses it.
+     */
+    if (hasChildren) {
+      setExpandedItems((previous) => ({
+        ...previous,
+        [item.id]: !previous[item.id],
+      }));
+
+      return;
+    }
+
+    /*
+     * Leaf item
+     *
+     * Example:
+     *
+     * Active Orders
+     *
+     * Navigate to its route.
+     */
+    if (item.path) {
+      navigate(item.path);
     }
   };
 
-  return (
-    <div className="accordian-cntr">
-      {options.map((item) => (
-        <div key={item.id}  className="according-item-wrpr">
-          <div
-            className="according-item-cntr"
-            onClick={()=>handleClick(item)}
-          >
-            {item.label}
-          </div>
 
-          {item.children.length > 0 && openItems[item.id] && (
-            <Accordian options={item.children} />
+  return (
+    <div className="navigation-item-wrapper">
+
+      {/* Navigation Item */}
+
+      <div
+        className={[
+          "navigation-item",
+
+          isActive
+            ? "navigation-item-active"
+            : "",
+
+          hasActiveChild
+            ? "navigation-item-parent-active"
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+
+        style={{
+          paddingLeft: `${12 + level * 16}px`,
+        }}
+
+        onClick={handleClick}
+      >
+
+        {/* Icon + Label */}
+
+        <div className="navigation-item-content">
+
+          {item.icon && (
+            <span className="navigation-item-icon">
+              {item.icon}
+            </span>
           )}
 
+          <span className="navigation-item-label">
+            {item.label}
+          </span>
+
         </div>
-      ))}
+
+
+        {/* Expand / Collapse Arrow */}
+
+        {hasChildren && (
+          <span
+            className={[
+              "navigation-arrow",
+
+              isExpanded
+                ? "navigation-arrow-open"
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            ›
+          </span>
+        )}
+
+      </div>
+
+
+      {/* ===================================================
+          Children
+         =================================================== */}
+
+      {hasChildren && isExpanded && (
+        <div className="navigation-children">
+
+          {item.children!.map((child) => (
+            <NavigationItemComponent
+              key={child.id}
+
+              item={child}
+
+              level={level + 1}
+
+              expandedItems={expandedItems}
+
+              setExpandedItems={setExpandedItems}
+            />
+          ))}
+
+        </div>
+      )}
+
     </div>
-  )
-}
+  );
+};
 
 
-export default Accordian
+/* =========================================================
+   Accordion
+   ========================================================= */
+
+const Accordian: React.FC<AccordianProps> = ({
+  options,
+}) => {
+  const location = useLocation();
+  const [expandedItems, setExpandedItems] = useState<
+    Record<string, boolean>
+  >({});
+
+
+  /* =======================================================
+     Automatically expand active route parents
+     ======================================================= */
+
+  useEffect(() => {
+    const parents = findActiveParents(
+      options,
+      location.pathname
+    );
+
+    if (!parents.length) {
+      return;
+    }
+
+    setExpandedItems((previous) => {
+      const next = {
+        ...previous,
+      };
+
+      parents.forEach((id) => {
+        next[id] = true;
+      });
+
+      return next;
+    });
+
+  }, [location.pathname, options]);
+
+
+  /* =======================================================
+     Render
+     ======================================================= */
+
+  return (
+    <nav className="sidebar-navigation">
+
+      {options.map((item) => (
+        <NavigationItemComponent
+          key={item.id}
+
+          item={item}
+
+          level={0}
+
+          expandedItems={expandedItems}
+
+          setExpandedItems={setExpandedItems}
+        />
+      ))}
+
+    </nav>
+  );
+};
+
+
+export default Accordian;
+

@@ -33,8 +33,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
-const [category, setCategory] =
-  useState<CreateCategoryPayload>({
+  const [category, setCategory] = useState<CreateCategoryPayload>({
     name: "",
     short_desc: "",
     long_desc: "",
@@ -43,52 +42,46 @@ const [category, setCategory] =
     display_order: 1,
   });
 
-useEffect(() => {
-  if (mode === "edit" && initialData) {
-    setCategory({
-      name: initialData.name,
-      short_desc: initialData.short_desc,
-      long_desc: initialData.long_desc,
-      is_active: initialData.is_active,
-      rules: initialData.rules,
-      display_order: initialData.display_order,
-    });
-  }
+  useEffect(() => {
+    if (mode === "edit" && initialData) {
+      setCategory({
+        name: initialData.name,
+        short_desc: initialData.short_desc,
+        long_desc: initialData.long_desc,
+        is_active: initialData.is_active,
+        rules: initialData.rules,
+        display_order: initialData.display_order,
+      });
+    }
 
-  if (
-    mode === "create" &&
-    filteredCategoriesLength !== undefined
-  ) {
+    if (mode === "create" && filteredCategoriesLength !== undefined) {
+      setCategory((prev) => ({
+        ...prev,
+        display_order: filteredCategoriesLength + 1,
+      }));
+    }
+  }, [initialData, filteredCategoriesLength, mode]);
+
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    if (name === "display_order") {
+      const maxOrder = filteredCategoriesLength ?? 1;
+      const numValue = Math.max(1, Math.min(Number(value), maxOrder));
+
+      setCategory((prev) => ({
+        ...prev,
+        display_order: numValue,
+      }));
+
+      return;
+    }
+
     setCategory((prev) => ({
       ...prev,
-      display_order: filteredCategoriesLength + 1,
+      [name]: value,
     }));
-  }
-}, [initialData, filteredCategoriesLength, mode]);
-
-const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const { name, value } = e.target;
-
-  if (name === "display_order") {
-    const maxOrder = filteredCategoriesLength ?? 1;
-    const numValue = Math.max(
-      1,
-      Math.min(Number(value), maxOrder)
-    );
-
-    setCategory((prev) => ({
-      ...prev,
-      display_order: numValue,
-    }));
-
-    return;
-  }
-
-  setCategory((prev) => ({
-    ...prev,
-    [name]: value,
-  }));
-};
+  };
 
   const isDisable =
     !category.name || !category.short_desc || !menu_id || disabledAllFields;

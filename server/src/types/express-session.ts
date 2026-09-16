@@ -12,3 +12,13 @@ declare module "express-serve-static-core" {
     user?: SignAccessArguments; 
   }
 }
+
+declare module "express"{
+  interface Request {
+      gatewaySession?: {
+        identifier: string;
+        type: string;
+        generatedAt?: number;
+      };
+    }
+}

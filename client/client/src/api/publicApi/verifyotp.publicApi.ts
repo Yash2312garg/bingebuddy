@@ -4,7 +4,7 @@ import { publicApi } from "../../utils/api";
 
 export const verifyOTPUtils = async (otp: string) => {
   const response = await publicApi.post(
-    "auth/verifyOtp",
+    "auth/v1/restaurant/verifyOtp",
     { otp },
     {
       withCredentials: true,
@@ -16,14 +16,14 @@ export const verifyOTPUtils = async (otp: string) => {
 };
 
 export const fetchOtpStatus = async()=>{
-    const res = await publicApi.get("auth/otp/status", { withCredentials: true });
+    const res = await publicApi.get("auth/v1/restaurant/otp/status", { withCredentials: true });
     if (res.status === 200){
       return res.data
     }
   };
 
 export const resendOTPUtils = async () => {
-  const response = await publicApi.post("auth/resendOtp",
+  const response = await publicApi.post("auth/v1/restaurant/resendOtp",
     { check: "hello" },
     { withCredentials: true },
   );

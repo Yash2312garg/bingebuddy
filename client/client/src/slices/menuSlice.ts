@@ -29,9 +29,9 @@ const initialState: MenuSliceState = {
 // const restaurantData =useAppSelector((state)=>state.auth.restaurant);
 export const fetchMenu = createAsyncThunk(
   "menu/fetchMenu",
-  async (restaurant_id: number) => {
+  async (restaurant_id: string) => {
     const data = await getAllMenu(restaurant_id);
-
+    // await new Promise((resolve) => setTimeout(resolve, 5000));
     return data;
   },
 );

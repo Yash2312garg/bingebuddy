@@ -1,5 +1,5 @@
 export interface Restaurant{
-    id: number;
+    id: string;
     reference_id: null| string;
     email: null | string;
     phone_number:  null| string;

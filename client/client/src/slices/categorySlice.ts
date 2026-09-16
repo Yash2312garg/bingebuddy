@@ -18,7 +18,7 @@ const initialState: CategoriesState = {
 
 export const fetchCategories = createAsyncThunk(
   "category/fetchCategory",
-  async (restaurant_id: number) => {
+  async (restaurant_id: string) => {
     const data = await getAllCategories(restaurant_id);
     return data.data;
   },

@@ -1,38 +1,41 @@
 import { Request, Response } from "express";
-// import { PreloginDataInterface } from "./Types";
-import { createNewRetaurantAccount } from "../../models/restaurant/restaurant_accounts.model";
 import { addRestaurantdata } from "../../models/restaurant/restaurant_details.model";
 import { addRestaurantAddress } from "../../models/restaurant/restaurant_address.model";
 import { S3_Service } from "../../services/S3/s3";
 import { RestaurantFileKey } from "../../services/S3/restaurantFileKeyGenerator";
 import { create_reference_id } from "../../utils/generateRefernceId";
+import { v4 as uuidv4 } from 'uuid';
+import { AUTH_ACTION_TYPE, EventPublisher } from "../../services/rabbitmq/eventPublisher";
+
 
 const BUCKET_NAME = process.env.AWS_BUCKET_NAME!;
 
 export const preLoginInfo = async (req: Request, res: Response) => {
   try {
     const data = req.body;
+    const session = req.gatewaySession!;
     let email: string | null = null;
     let phone_number: string | null = null;
-    if (!req.session.otpIdentifier || !req.session.identifierType) {
-      return res.status(404).json({ msg: "session expired" });
-    }
-    const identifierType = req.session.identifierType;
 
-    if (identifierType === "email") {
-      email = req.session.otpIdentifier;
-    } else if (identifierType === "phone") {
-      phone_number = req.session.otpIdentifier;
-    } else if (identifierType ==="referene_id"){
+
+    if (session.type === "email") {
+      email = session.identifier;
+    } else if (session.type === "phone") {
+      phone_number = session.identifier;
+    } else if (session.type  ==="referene_id"){
 
     }
     const phone = phone_number ? parseInt(phone_number) : null;
-    const restaurant_id = await createNewRetaurantAccount(
+    const restaurant_id =  uuidv4()
+    await EventPublisher.emitAuthEvent(
+      restaurant_id,
       email,
-      phone || null,
+      phone,
       "PENDING",
-      data.reference_id
-    );
+      data.reference_id,
+      AUTH_ACTION_TYPE.CREATE
+    )   
+    
     const { address, ...datawithoutaddress } = data;
 
     if (restaurant_id) {

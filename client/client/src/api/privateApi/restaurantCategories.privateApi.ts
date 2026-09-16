@@ -28,7 +28,7 @@ export const addNewCategory = async (data: addCategoryPayload) => {
   }
 };
 
-export const getAllCategories = async (restaurant_id: number) => {
+export const getAllCategories = async (restaurant_id: string) => {
   try {
     const response = await privateApi.get(
       "/restaurant/categories/getAllCategories",

@@ -1,0 +1,65 @@
+.Checkbox-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  cursor: pointer;
+  user-select: none;
+}
+
+.Checkbox-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.Checkbox-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 18px;
+  height: 18px;
+
+  box-sizing: border-box;
+  border: 1.5px solid var(--Medium-Grey-color);
+  border-radius: 5px;
+
+  background-color: var(--information-color);
+
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.Checkbox-check {
+  color: var(--information-color);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.Checkbox-input:checked + .Checkbox-box {
+  background-color: var(--Brand-Primary-Colors);
+  border-color: var(--Brand-Primary-Colors);
+}
+
+.Checkbox-wrapper:hover .Checkbox-box {
+  border-color: var(--Brand-Primary-Colors);
+}
+
+.Checkbox-input:focus-visible + .Checkbox-box {
+  box-shadow: 0 0 0 3px rgba(112, 0, 255, 0.15);
+}
+
+.Checkbox-label {
+  color: var(--Primary-Text-Color);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.Checkbox-wrapper:has(.Checkbox-input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

@@ -1,0 +1,107 @@
+.Item-container{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    border-radius: 16px;
+    width: 100%;
+    background-color: var(--information-color);
+    overflow: hidden;
+    position: relative;
+}
+.Item-Image-wrpr{
+    display: flex;
+    width: 100%;
+    height: 180px;
+    /* borde */
+    box-sizing: border-box;
+
+    background: var(--muted-Grey-color);
+}
+.Item-info-wrpr{
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 20px;
+    gap: 10px;
+    width: 100%;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+.Item-info-heading{
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-direction: row;
+    width: 100%;
+}
+.item-price{
+    color: var(  --Brand-Primary-Colors);
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.item-name{
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var( --Primary-Text-Color);
+}
+.Item-infor-category{
+    background-color: var(  --Ghost-White-Color);
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--Secondary-Text-Color);
+}
+.Item-shrot-desc{
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--Secondary-Text-Color);
+}
+.Item-desc-wrpr{
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-direction: row;
+    width: 100%;
+    gap: 20px;
+}
+.Item-Spice{
+        background-color: var(    --Brand-Tertiary-Colors);
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(  --information-color);
+}
+.Item-preptime{
+        background-color: var(  --Ghost-White-Color);
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--Secondary-Text-Color);
+}
+.Item-btn-wrpr{
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+.Item-type-floater{
+    /* display: ; */
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: var(--Primary-Text-Color);
+}
+.Item-type-floater.veg{
+     background-color: var( --Success-Color);
+}

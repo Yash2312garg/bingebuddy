@@ -1,7 +1,7 @@
 import { privateApi } from "../../utils/api";
 
 export interface NewMenuPayload {
-  restaurant_id: number;
+  restaurant_id: string;
   name: string;
   short_desc: string;
   long_desc: string;
@@ -71,7 +71,7 @@ export const deleteMenu = async (menu_id: number) => {
   }
 };
 
-export const getAllMenu = async (restaurant_id: number) => {
+export const getAllMenu = async (restaurant_id: string) => {
   try {
     const response = await privateApi.get("restaurant/menu/getAllMenu", {
       params: {

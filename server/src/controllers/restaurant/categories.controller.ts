@@ -39,7 +39,7 @@ export const addCategory = async (req: Request, res: Response) => {
 
 export const getAllCategories = async (req: Request, res: Response) => {
   try {
-    const restaurant_id = Number(req.query.restaurant_id);
+    const restaurant_id = req.query.restaurant_id as string;
     if (!restaurant_id) {
       return res.status(404).json({ msg: "ionvalid data provided" });
     }

@@ -60,7 +60,7 @@ export class Category {
     }
   }
 
-  static async getAllCategories(restaurant_id: number) {
+  static async getAllCategories(restaurant_id: string) {
     const query = `select c.id, c.menu_id, c.name, c.short_desc, c.long_desc, c.display_order,c.is_active, c.rules
         from categories c 
         join menu m

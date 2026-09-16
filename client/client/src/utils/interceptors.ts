@@ -41,7 +41,7 @@ export const setupInterceptors = (store:AppStore) => {
         originalRequest._retry = true;
         isRefreshing = true;
         try {
-          await publicApi.post("auth/refresh");
+          await publicApi.post("auth/v1/restaurant/refresh");
           processQueue(null);
           return privateApi(originalRequest); // retry original
         } catch (refreshError) {

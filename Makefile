@@ -21,12 +21,12 @@ help:
 	@echo ""
 	@echo "$(BOLD)BingeBuddy — available commands$(RESET)"
 	@echo ""
-	@echo "  $(CYAN)make dev$(RESET)            Start full dev stack (gateway + both services + all DBs)"
+	@echo "  $(CYAN)make dev$(RESET)            Start full dev stack (gateway + all services + all DBs)"
 	@echo "  $(CYAN)make dev-build$(RESET)      Rebuild images then start dev stack"
 	@echo "  $(CYAN)make prod$(RESET)           Start full prod stack"
 	@echo "  $(CYAN)make prod-build$(RESET)     Rebuild images then start prod stack"
 	@echo ""
-	@echo "  $(CYAN)make kill-ports$(RESET)     Free ports 9229/9230 after a crash, then re-run make dev-build"
+	@echo "  $(CYAN)make kill-ports$(RESET)     Free ports 9229/9230/9231 after a crash, then re-run make dev-build"
 	@echo "  $(CYAN)make stop$(RESET)           Stop all running containers"
 	@echo "  $(CYAN)make down$(RESET)           Stop and remove containers + networks"
 	@echo "  $(CYAN)make clean$(RESET)          down + remove named volumes (destroys DB data)"
@@ -36,16 +36,20 @@ help:
 	@echo "  $(CYAN)make logs-gateway$(RESET)   Tail gateway logs only"
 	@echo "  $(CYAN)make logs-app$(RESET)       Tail main-app logs only"
 	@echo "  $(CYAN)make logs-notif$(RESET)     Tail notification-service logs only"
+	@echo "  $(CYAN)make logs-auth$(RESET)      Tail auth-service logs only"
 	@echo ""
 	@echo "  $(CYAN)make ps$(RESET)             Show running containers and health"
 	@echo "  $(CYAN)make shell-app$(RESET)      Open shell inside main-app container"
 	@echo "  $(CYAN)make shell-notif$(RESET)    Open shell inside notification-service container"
+	@echo "  $(CYAN)make shell-auth$(RESET)     Open shell inside auth-service container"
 	@echo "  $(CYAN)make shell-db$(RESET)       Open psql inside main-db"
 	@echo "  $(CYAN)make shell-notif-db$(RESET) Open psql inside notification-db"
+	@echo "  $(CYAN)make shell-auth-db$(RESET)  Open psql inside auth-db"
 	@echo ""
-	@echo "  $(CYAN)make restart-gateway$(RESET)  Restart gateway without touching other services"
-	@echo "  $(CYAN)make rebuild-app$(RESET)      Rebuild + restart main-app only"
-	@echo "  $(CYAN)make rebuild-notif$(RESET)    Rebuild + restart notification-service only"
+	@echo "  $(CYAN)make restart-gateway$(RESET) Restart gateway without touching other services"
+	@echo "  $(CYAN)make rebuild-app$(RESET)     Rebuild + restart main-app only"
+	@echo "  $(CYAN)make rebuild-notif$(RESET)   Rebuild + restart notification-service only"
+	@echo "  $(CYAN)make rebuild-auth$(RESET)    Rebuild + restart auth-service only"
 	@echo ""
 
 # ── Dev ──────────────────────────────────────────────────────────────────────
@@ -69,15 +73,16 @@ prod-build:
 	$(COMPOSE_PROD) up --build -d
 
 # ── Emergency rescue ─────────────────────────────────────────────────────────
-# Run when a crash leaves debugger ports 9229/9230 allocated on the host.
+# Run when a crash leaves debugger ports 9229/9230/9231 allocated on the host.
 # Kills whatever owns those ports, then removes stopped containers still
 # holding the port binding.
 
 .PHONY: kill-ports
 kill-ports:
-	@echo "$(CYAN)Releasing ports 9229 and 9230...$(RESET)"
+	@echo "$(CYAN)Releasing ports 9229, 9230, and 9231...$(RESET)"
 	@lsof -ti :9229 | xargs -r kill -9 2>/dev/null || true
 	@lsof -ti :9230 | xargs -r kill -9 2>/dev/null || true
+	@lsof -ti :9231 | xargs -r kill -9 2>/dev/null || true
 	@docker ps -aq --filter status=exited | xargs -r docker rm -f 2>/dev/null || true
 	@echo "$(CYAN)Done. Run 'make dev-build' now.$(RESET)"
 
@@ -109,7 +114,7 @@ logs:
 
 .PHONY: logs-gateway
 logs-gateway:
-	$(COMPOSE) logs -f api-gateway
+	$(COMPOSE) logs -f gateway
 
 .PHONY: logs-app
 logs-app:
@@ -118,6 +123,10 @@ logs-app:
 .PHONY: logs-notif
 logs-notif:
 	$(COMPOSE) logs -f notification-service-dev
+
+.PHONY: logs-auth
+logs-auth:
+	$(COMPOSE) logs -f auth-service-dev
 
 # ── Status ───────────────────────────────────────────────────────────────────
 
@@ -135,6 +144,10 @@ shell-app:
 shell-notif:
 	$(COMPOSE) exec notification-service-dev sh
 
+.PHONY: shell-auth
+shell-auth:
+	$(COMPOSE) exec auth-service-dev sh
+
 .PHONY: shell-db
 shell-db:
 	$(COMPOSE) exec main-db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
@@ -143,11 +156,15 @@ shell-db:
 shell-notif-db:
 	$(COMPOSE) exec notification-db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
+.PHONY: shell-auth-db
+shell-auth-db:
+	$(COMPOSE) exec auth-db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
+
 # ── Surgical restarts ────────────────────────────────────────────────────────
 
 .PHONY: restart-gateway
 restart-gateway:
-	$(COMPOSE) restart api-gateway
+	$(COMPOSE) restart gateway
 
 .PHONY: rebuild-app
 rebuild-app:
@@ -156,3 +173,7 @@ rebuild-app:
 .PHONY: rebuild-notif
 rebuild-notif:
 	$(COMPOSE) up --build --no-deps -d notification-service-dev
+
+.PHONY: rebuild-auth
+rebuild-auth:
+	$(COMPOSE) up --build --no-deps -d auth-service-dev

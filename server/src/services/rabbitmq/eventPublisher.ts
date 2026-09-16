@@ -7,6 +7,9 @@ const EXCHANGE_TYPE = "topic";
 const SSE_EXCHANGE = "bingebuddy_sse_direct";
 const EMAIL_EXCHANGE = "bingebuddy_email";
 const EMAIL_ROUTING_KEY = "email.send"; 
+
+// const EXCHANGE_NAME "auth_events";
+const AUTH_EXCHANGE = "bingebuddy_auth"
 export class EventPublisher {
   private static initialized = false;
 
@@ -24,10 +27,11 @@ export class EventPublisher {
     await channel.assertExchange(SSE_EXCHANGE, "direct", {
       durable: true,
     });
+
+    await channel.assertExchange(AUTH_EXCHANGE, "topic", { durable: true });
     this.initialized = true;
     console.log(`✅ Exchanges "${EXCHANGE_NAME}" & "${SSE_EXCHANGE}" ready`);
   }
-
   // ─── Call on every event ────────────────────────────────────────────────────
   static async publish(routingKey: string, data: unknown): Promise<void> {
     // Guard: re-initialize if the channel was recycled after a reconnect
@@ -60,6 +64,7 @@ export class EventPublisher {
       console.warn(`⚠️  Back-pressure on [${routingKey}] — broker is slow`);
     }
   }
+
   static async emitInAppNotification(
     targetUserId: string,
     eventType: "IN_APP",
@@ -132,10 +137,60 @@ export class EventPublisher {
 
     if (isPublished) {
       console.log(
-        `📤 Published EMAIL event [${templateCode}] to ${recipientEmail}`,
+        `Published EMAIL event [${templateCode}] to ${recipientEmail}`,
       );
     } else {
       console.warn(`⚠️ Back-pressure: Could not publish EMAIL event`);
     }
   }
+
+  static async emitAuthEvent(
+    id:string,
+     email:string|null, 
+     phone_number: number|null, 
+     auth_status: string|null,
+     reference_id: string|null,
+     action: AUTH_ACTION_TYPE
+  ):Promise<void> {
+        if (!this.initialized) await this.initialize();
+        const channel = rabbitMQClient.getChannel();
+        const routingKey = `restaurant.${action}`;
+        const payload = {
+            // eventType :"CREATE_RESTAURANT",
+            id: id,
+            email: email,
+            phone_number: phone_number,
+            auth_status: auth_status,
+            reference_id: reference_id
+        }
+        const messageBuffer = Buffer.from(JSON.stringify(payload));
+        const isPublished = channel.publish(
+          AUTH_EXCHANGE,
+          routingKey,
+          messageBuffer,
+           {
+        persistent: true,
+        contentType: "application/json",
+        timestamp: Math.floor(Date.now() / 1000),
+      },
+        )
+
+        if (isPublished){
+          console.log(
+            `event published to create the new restaurant with reference_id ${reference_id}`
+          )
+        }
+        else {
+      // Channel write buffer is full — back-pressure from RabbitMQ.
+      // The message is still queued internally by amqplib; log and let
+      // the caller decide whether to await the 'drain' event.
+      console.warn(`⚠️  Back-pressure on [${routingKey}] — broker is slow`);
+    }
+  }
+}
+
+
+export enum AUTH_ACTION_TYPE {
+  CREATE = "create",
+  UPDATE = "update",
 }

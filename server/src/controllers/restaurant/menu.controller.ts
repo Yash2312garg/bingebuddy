@@ -145,7 +145,7 @@ export const getAllMenu = async(req:Request,res:Response)=>{
     try{
         const restaurant_id = req.query.restaurant_id as string;
         if(restaurant_id){
-            const AllMenus = await Menu.getAllMenu(Number(restaurant_id))
+            const AllMenus = await Menu.getAllMenu(restaurant_id)
             return res.status(200).json({msg:'Menus',data: AllMenus})
 
         }

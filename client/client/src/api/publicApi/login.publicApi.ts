@@ -13,7 +13,7 @@ interface ApiResponse {
 
 export async function sendOtpRequest(payload: OtpRequestPayload) {
   const response = await publicApi.post<ApiResponse>(
-    "/auth/login",
+    "/auth/v1/restaurant/login",
     payload
   );
 

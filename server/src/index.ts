@@ -8,6 +8,7 @@ import restaurantMenuRoutes from "./routes/restaurant/menu.routes";
 import restaurantCategoryRoutes from "./routes/restaurant/categories.routes";
 import restaurantAuthRoutes from "./routes/auth/auth.routes";
 import restaurantInfoRoutes from "./routes/restaurant/restaurant.routes";
+import restaurantItemsRoutes from "./routes/restaurant/items.routes"
 import cookieParser from "cookie-parser";
 import "dotenv/config";
 import "./types/express-session";
@@ -36,7 +37,9 @@ app.use("/restaurant/prelogin", restaurantPreLoginRoutes);
 app.use("/restaurant/menu", restaurantMenuRoutes);
 app.use("/restaurant/categories", restaurantCategoryRoutes);
 app.use("/auth", restaurantAuthRoutes);
+// app.use("/res")
 app.use("/restaurant/info", restaurantInfoRoutes);
+app.use("/restaurant/items/v1",restaurantItemsRoutes)
 
 app.get("/", (_req: Request, res: Response) => {
   res.status(200).json("Hello World!");

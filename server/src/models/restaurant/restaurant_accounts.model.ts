@@ -44,23 +44,3 @@ export const getAccountInformation = async(email: string):Promise<RestaurantAcco
 
 }
 
-export const createNewRetaurantAccount = async(email:string|null, phone_number: number|null, auth_status: string|null,reference_id: string|null):Promise<string|null>=>{
-    try{
-        const query = `INSERT INTO restaurant_accounts (email, phone_number,reference_id, auth_status) VALUES ($1, $2, $3, $4) returning id`
-        const values = [email,phone_number, reference_id,auth_status]
-        console.log("createNewRetaurantAccount",values)
-
-        const result = await pool.query(query,values)
-        console.log(result)
-        if(result.rows.length>0)
-            return result.rows[0].id
-        else{
-            return null
-        }
-        
-    }catch(err){
-        console.log(err)
-        throw new Error("database error")
-    }   
-}
-
