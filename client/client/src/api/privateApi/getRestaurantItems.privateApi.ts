@@ -3,10 +3,15 @@ import { privateApi } from "../../utils/api";
 
 export const getRestaurantItemsData = async (
   restaurant_id: string,
-  page: number,
-  limit: number,
-  query: string,
-  selectedCategory: SelectedCategoryFilterInterface
+  page: number = 1,
+  limit: number = 6,
+  query?: string,
+  selectedCategory?: SelectedCategoryFilterInterface,
+  is_available?: boolean,
+  min_price?: number,
+  max_price?: number,
+  sort_by: "price" | "updated_at" = "updated_at",
+  sort_order: "ASC" | "DESC" = "DESC"
 ) => {
   try {
     const response = await privateApi.get("/restaurant/items/v1/getAllItems", {
@@ -14,21 +19,29 @@ export const getRestaurantItemsData = async (
         restaurant_id,
         limit,
         page,
-        search:query,
-        category_id: selectedCategory.id ===-1 ?null :selectedCategory.id
+        search: query && query.trim() !== "" ? query : undefined,
+        category_id:
+          selectedCategory && selectedCategory.id !== -1
+            ? selectedCategory.id
+            : undefined,
+        is_available,
+        min_price,
+        max_price,
+        sort_by,
+        sort_order,
       },
       withCredentials: true,
     });
+
     if (response.status === 200) {
-      return response.data
-    } else {
-      return null;
+      return response.data;
     }
+    return null;
   } catch (e) {
+    console.error("Error fetching items:", e);
     throw new Error("error while fetching restaurant Items information");
   }
 };
-
 export const deleteRestaurantItems = async(item_id: number)=>{
   try{
     const response = await privateApi.post("/restaurant/items/v1/deleteItem",{item_id},{withCredentials: true})

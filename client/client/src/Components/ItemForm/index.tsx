@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Btn from "../Buttons/Button";
 import { Input } from "../Input/Input";
@@ -6,7 +6,7 @@ import { Dropdown } from "../Dropdown";
 import Checkbox from "../Checkbox";
 import type { Category } from "../../Types/Category";
 import type { AddRestaurantItems } from "../../api/privateApi/getRestaurantItems.privateApi";
-import { onSubmitCreate } from "../../CreateItems/utils";
+import { onSubmitCreate, onSubmitEdit } from "../../CreateItems/utils";
 import { useAppDispatch } from "../../hooks/redux";
 import "./index.css";
 
@@ -24,9 +24,15 @@ interface ItemFormProps {
   mode: "create" | "edit";
   initialData: InitialFormData;
   item_id?: number;
+  editData?: AddRestaurantItems;
 }
 
-const ItemForm: React.FC<ItemFormProps> = ({ mode, initialData }) => {
+const ItemForm: React.FC<ItemFormProps> = ({
+  mode,
+  initialData,
+  item_id,
+  editData,
+}) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
@@ -37,15 +43,22 @@ const ItemForm: React.FC<ItemFormProps> = ({ mode, initialData }) => {
     short_desc: "",
     long_desc: "",
     base_price: 0,
-    is_available: false,
-    is_veg: false,
-    spice_level: initialData.spiceLevel[0]?.name ?? "",
+    is_available: true,
+    is_veg: true,
+    spice_level: initialData.spiceLevel[0]?.name ?? "Mild",
     prep_time: 0,
     tags: null,
     img_url: null,
   });
 
-  // Selected object finders for Dropdown display state
+  // Populate fields in Edit Mode
+  useEffect(() => {
+    if (mode === "edit" && editData) {
+      setItemData(editData);
+    }
+  }, [mode, editData]);
+
+  // Dropdown selections
   const currentCategory =
     initialData.categories.find((c) => c.id === itemData.category_id) ||
     initialData.categories[0];
@@ -54,25 +67,23 @@ const ItemForm: React.FC<ItemFormProps> = ({ mode, initialData }) => {
     initialData.spiceLevel.find((s) => s.name === itemData.spice_level) ||
     initialData.spiceLevel[0];
 
-  // Generic Field Change Handler
+  // Input Change Handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
-    
     setItemData((prev) => ({
       ...prev,
       [name]: type === "number" ? Math.max(0, Number(value)) : value,
     }));
   };
 
-  // Checkbox Handler
-  const handleCheckboxChange = (name: "is_available" | "is_veg") => (checked: boolean) => {
-    setItemData((prev) => ({
-      ...prev,
-      [name]: checked,
-    }));
-  };
+  const handleCheckboxChange =
+    (name: "is_available" | "is_veg") => (checked: boolean) => {
+      setItemData((prev) => ({
+        ...prev,
+        [name]: checked,
+      }));
+    };
 
-  // Dropdown Handlers
   const handleCategoryChange = (category: Category) => {
     setItemData((prev) => ({ ...prev, category_id: category.id }));
   };
@@ -84,6 +95,8 @@ const ItemForm: React.FC<ItemFormProps> = ({ mode, initialData }) => {
   const handleSubmit = () => {
     if (mode === "create") {
       onSubmitCreate(itemData, setLoading, navigate, dispatch);
+    } else if (mode === "edit" && item_id) {
+      onSubmitEdit(item_id, itemData, setLoading, navigate, dispatch);
     }
   };
 
@@ -97,7 +110,7 @@ const ItemForm: React.FC<ItemFormProps> = ({ mode, initialData }) => {
 
   return (
     <div className="Items-Form-cntr">
-      {/* Name and Category Section */}
+      {/* Name and Category */}
       <div className="Item-First-Part">
         <Input>
           <Input.Label>Item Name *</Input.Label>
@@ -144,7 +157,7 @@ const ItemForm: React.FC<ItemFormProps> = ({ mode, initialData }) => {
         />
       </Input>
 
-      {/* Pricing & Timing Section */}
+      {/* Pricing, Prep Time & Spice */}
       <div className="Item-Second-Part">
         <Input>
           <Input.Label>Base Price *</Input.Label>
@@ -186,29 +199,30 @@ const ItemForm: React.FC<ItemFormProps> = ({ mode, initialData }) => {
         <Checkbox
           id="item_active"
           label="Available"
-          checked={itemData.is_available}
+          checked={!!itemData.is_available}
           onChange={handleCheckboxChange("is_available")}
         />
         <Checkbox
           id="item_veg"
           label="Vegetarian"
-          checked={itemData.is_veg}
+          checked={!!itemData.is_veg}
           onChange={handleCheckboxChange("is_veg")}
         />
       </div>
 
-      {/* Variants & Addons */}
+      {/* Variants (Placeholder for future feature) */}
       <div className="Item-varients-inputs">
         <h3>Variants</h3>
         <p>Select variants that apply to this item (e.g., Size, Crust Type)</p>
       </div>
 
+      {/* Add-ons (Placeholder for future feature) */}
       <div className="Item-varients-inputs">
         <h3>Add-ons</h3>
         <p>Select Add-ons that apply to this item</p>
       </div>
 
-      {/* Actions */}
+      {/* Action Buttons */}
       <div className="Item-action-btn">
         <Btn variant="Secondary" onClick={() => navigate("/items")}>
           Cancel
@@ -218,7 +232,11 @@ const ItemForm: React.FC<ItemFormProps> = ({ mode, initialData }) => {
           disabled={isFormInvalid || loading}
           onClick={handleSubmit}
         >
-          {loading ? "Saving..." : mode === "create" ? "Create" : "Save Changes"}
+          {loading
+            ? "Saving..."
+            : mode === "create"
+            ? "Create"
+            : "Save Changes"}
         </Btn>
       </div>
     </div>

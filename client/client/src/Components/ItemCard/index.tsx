@@ -7,10 +7,34 @@ import Activate from "../../assets/Edit/Show.svg";
 import Delete from "../../assets/delete.svg";
 import { useAppSelector } from "../../hooks/redux";
 
-const ItemCard: React.FC<{ item: ItemsState, onToggleStatus: (item:ItemsState)=>void ,onDeleteItem: (item:ItemsState)=> void} > = ({ item,onToggleStatus, onDeleteItem}) => {
-    const categories = useAppSelector((state)=>state.category.categories)
-    const category_name = categories.filter((category)=>category.id === item.category_id)[0]
+const ItemCard: React.FC<{
+  item: ItemsState;
+  onToggleStatus: (item: ItemsState) => void;
+  onDeleteItem: (item: ItemsState) => void;
+  handleEdit: (item: ItemsState) => void;
+}> = ({ item, onToggleStatus, onDeleteItem, handleEdit }) => {
+  const categories = useAppSelector((state) => state.category.categories);
+  const category_name = categories.filter(
+    (category) => category.id === item.category_id,
+  )[0];
+  const formatLastUpdated = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
 
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const lastUpdated = formatLastUpdated(
+    item.item_updated_at || item.item_created_at,
+  );
   return (
     <div className="Item-container">
       {item.is_veg ? (
@@ -32,34 +56,45 @@ const ItemCard: React.FC<{ item: ItemsState, onToggleStatus: (item:ItemsState)=>
           <span className="Item-Spice">{item.spice_level}</span>
           <span className="Item-preptime">{item.prep_time} min</span>
         </div>
-        <div className="Item-btn-wrpr">
-          <Btn
-            size="Small"
-            className={`Category-actn-btn-deactivate`}
-               onClick={() => onToggleStatus(item)}
-          >
-            <img
-              width="16px"
-              height="16px"
-              src={item.is_available ? Deactivate : Activate}
-            />{" "}
-          </Btn>
-          <Btn
-            size="Small"
-            className={`MenuCard-actn-btn-edit ${item.is_available ? "active" : "deactive"}`}
-            disabled={!item.is_available}
-            //    onClick={() => onEdit(category)}
-          >
-            <img width="16px" height="16px" src={Edit} alt="" />
-          </Btn>
-          <Btn
-            size="Small"
-            className={`MenuCard-actn-btn-delete`}
-            disabled={!item.is_available}
-             onClick={() => onDeleteItem(item)}
-          >
-            <img width="16px" height="16px" src={Delete} alt="" />
-          </Btn>
+
+        <div className="Item-footer-wrpr">
+          <div className="Item-btn-wrpr">
+            <Btn
+              size="Small"
+              className="Category-actn-btn-deactivate"
+              onClick={() => onToggleStatus(item)}
+            >
+              <img
+                width="16px"
+                height="16px"
+                src={item.is_available ? Deactivate : Activate}
+                alt={item.is_available ? "Deactivate" : "Activate"}
+              />
+            </Btn>
+
+            <Btn
+              size="Small"
+              className={`MenuCard-actn-btn-edit ${
+                item.is_available ? "active" : "deactive"
+              }`}
+              disabled={!item.is_available}
+              onClick={() => handleEdit(item)}
+            >
+              <img width="16px" height="16px" src={Edit} alt="Edit" />
+            </Btn>
+
+            <Btn
+              size="Small"
+              className="MenuCard-actn-btn-delete"
+              disabled={!item.is_available}
+              onClick={() => onDeleteItem(item)}
+            >
+              <img width="16px" height="16px" src={Delete} alt="Delete" />
+            </Btn>
+          </div>
+
+          {/* Timestamp on the far right */}
+          <span className="Item-updated-time">{lastUpdated}</span>
         </div>
       </div>
     </div>

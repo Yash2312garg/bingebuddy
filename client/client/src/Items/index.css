@@ -40,3 +40,76 @@
     width: 100%;
     box-sizing: border-box;
 }
+
+.Filter-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+/* Subtle Active Status Dot */
+.Filter-badge {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--Brand-Primary-Colors);
+  display: inline-block;
+}
+
+/* White dot when button variant is Primary */
+.btn.primary .Filter-badge {
+  background-color: #ffffff;
+}
+
+/* Applied Active Filters Row */
+.ActiveFilters-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.ActiveFilter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background-color: var(--Card_Input-Background-Color);
+  border: 1px solid var(--Trace-Grey-Color);
+  color: var(--Primary-Text-Color);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.ActiveFilter-tag-remove {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--Secondary-Text-Color);
+  font-size: 0.85rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.ActiveFilter-tag-remove:hover {
+  color: var(--Error-color);
+}
+
+.ActiveFilter-clear-all {
+  background: transparent;
+  border: none;
+  color: var(--Secondary-Text-Color);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0 4px;
+}
+
+.ActiveFilter-clear-all:hover {
+  color: var(--Primary-Text-Color);
+}

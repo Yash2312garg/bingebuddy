@@ -83,12 +83,9 @@
     font-weight: 400;
     color: var(--Secondary-Text-Color);
 }
-.Item-btn-wrpr{
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 10px;
+.Item-btn-wrpr {
+  display: flex;
+  gap: 8px;
 }
 
 .Item-type-floater{
@@ -104,4 +101,27 @@
 }
 .Item-type-floater.veg{
      background-color: var( --Success-Color);
+}
+
+.Item-updated-time {
+  font-size: 0.72rem;
+  color: #888888;
+  font-style: italic;
+  white-space: nowrap;
+  margin-left: 12px;
+}
+.Item-updated-time {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 6px;
+  margin-bottom: 8px;
+  font-style: italic;
+}
+.Item-footer-wrpr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto; /* Pushes the footer to the bottom of the card */
+  padding-top: 8px;
+  width: 100%;
 }

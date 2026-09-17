@@ -17,6 +17,7 @@ import CreateCategory from "./CreateCategory";
 import EditCategory from "./EditCategory";
 import Items from "./Items";
 import CreateItems from "./CreateItems";
+import EditItems from "./EditItems";
 
 const router = createBrowserRouter([
   {
@@ -118,17 +119,26 @@ const router = createBrowserRouter([
                 element: <Items />,
                 handle: {
                   primaryHeading: "Menu Items",
-                  secondaryHeading: "Manage your menu items with variants, addons, and availability",
+                  secondaryHeading:
+                    "Manage your menu items with variants, addons, and availability",
                   CTA_Button: { label: "+ Add Items", to: "/items/create" },
-
                 },
               },
-                            {
+              {
                 path: "/items/create",
                 element: <CreateItems />,
                 handle: {
                   primaryHeading: "Menu Items",
-                  secondaryHeading: "Manage your menu items with variants, addons, and availability",
+                  secondaryHeading:
+                    "Manage your menu items with variants, addons, and availability",
+                },
+              },
+              {
+                path: "/items/:itemId",
+                element: <EditItems />,
+                handle: {
+                  primaryHeading: "Menu Items",
+                  secondaryHeading: "Edit your item details",
                 },
               },
             ],

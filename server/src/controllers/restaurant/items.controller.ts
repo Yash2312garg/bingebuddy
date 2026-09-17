@@ -145,39 +145,39 @@ export const toggleStatus = async(req:Request, res:Response)=>{
     return res.status(500).json({msg:"Internal Server Error"})
   }
 }
-// export const editItems = async (req: Request, res: Response) => {
-//   const item_id = req.params.item_id ? Number(req.params.item_id) : req.body.item_id;
-//   const data: AddRestaurantItems = req.body.data;
+export const editItems = async (req: Request, res: Response) => {
+  const item_id = req.params.item_id ? Number(req.params.item_id) : req.body.item_id;
+  const data: AddRestaurantItems = req.body.data;
 
-//   if (!item_id || isNaN(Number(item_id))) {
-//     return res.status(400).json({
-//       msg: "Valid item_id is required",
-//     });
-//   }
+  if (!item_id || isNaN(Number(item_id))) {
+    return res.status(400).json({
+      msg: "Valid item_id is required",
+    });
+  }
 
-//   if (!data) {
-//     return res.status(400).json({
-//       msg: "Incorrect payload provided",
-//     });
-//   }
+  if (!data) {
+    return res.status(400).json({
+      msg: "Incorrect payload provided",
+    });
+  }
 
-//   try {
-//     const updatedItem = await RestaurantItemModel.editItem(Number(item_id), data);
+  try {
+    const updatedItem = await RestaurantItemModel.editItem(Number(item_id), data);
 
-//     if (updatedItem) {
-//       return res.status(200).json({
-//         msg: "Item successfully updated",
-//         data: updatedItem,
-//       });
-//     }
+    if (updatedItem) {
+      return res.status(200).json({
+        msg: "Item successfully updated",
+        data: updatedItem,
+      });
+    }
 
-//     return res.status(404).json({
-//       msg: "Item not found",
-//     });
-//   } catch (e) {
-//     console.error("Error updating item:", e);
-//     return res.status(500).json({
-//       msg: "Internal server error",
-//     });
-//   }
-// };
+    return res.status(404).json({
+      msg: "Item not found",
+    });
+  } catch (e) {
+    console.error("Error updating item:", e);
+    return res.status(500).json({
+      msg: "Internal server error",
+    });
+  }
+};
