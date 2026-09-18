@@ -1,49 +1,68 @@
-# ==========================================
-# BASE STAGE
-# ==========================================
-FROM node:20-alpine AS base
-# Install necessary Alpine packages (curl for healthchecks)
-RUN apk add --no-cache curl
+# syntax=docker/dockerfile:1
+# ========================================
+# Optimized Multi-Stage Dockerfile for Auth Service
+# ========================================
+
+ARG NODE_VERSION=22.13.1
+FROM node:${NODE_VERSION}-alpine AS base
+
 WORKDIR /usr/src/app
-# Copy package files first for better layer caching
+
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs && \
+    chown -R nodejs:nodejs /usr/src/app
+
+# ========================================
+# 1. Production Dependencies Stage
+# ========================================
+FROM base AS deps
 COPY package*.json ./
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --omit=dev && \
+    npm cache clean --force
 
-# ==========================================
-# DEVELOPMENT STAGE
-# ==========================================
-FROM base AS development
-# Install all dependencies (including devDependencies like TypeScript, Nodemon)
-RUN npm ci
-# Do not copy source code here! We use Docker volume mounts in docker-compose for live-reloading.
-# Start via the dev script (e.g., nodemon or ts-node-dev)
-CMD ["npm", "run", "dev"]
+# ========================================
+# 2. Build Dependencies Stage (Dev + Build Tools)
+# ========================================
+FROM base AS build-deps
+COPY package*.json ./
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --no-audit --no-fund && \
+    npm cache clean --force
 
-# ==========================================
-# BUILD STAGE
-# ==========================================
-FROM base AS build
-# Install all dependencies to compile TypeScript
-RUN npm ci
-# Copy all source code
-COPY . .
-# Compile TypeScript to JavaScript (assuming you have a "build" script in package.json)
+# ========================================
+# 3. Build Stage (Compilation)
+# ========================================
+FROM build-deps AS build
+COPY --chown=nodejs:nodejs . .
 RUN npm run build
 
-# ==========================================
-# PRODUCTION STAGE
-# ==========================================
+# ========================================
+# 4. Development Stage (Target for auth-service-dev)
+# ========================================
+FROM build-deps AS development
+ENV NODE_ENV=development \
+    NPM_CONFIG_LOGLEVEL=warn
+
+COPY --chown=nodejs:nodejs . .
+RUN chmod -R 755 /usr/src/app
+
+USER nodejs
+EXPOSE 3002 9229
+CMD ["npm", "run", "dev"]
+
+# ========================================
+# 5. Production Stage (Target for auth-service-prod)
+# ========================================
 FROM base AS production
-# Set Node environment to production
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--max-old-space-size=1024 --no-warnings" \
+    NPM_CONFIG_LOGLEVEL=silent
 
-# Install ONLY production dependencies to keep the image small and secure
-RUN npm ci --only=production && npm cache clean --force
+COPY --from=deps --chown=nodejs:nodejs /usr/src/app/node_modules ./node_modules
+COPY --from=deps --chown=nodejs:nodejs /usr/src/app/package*.json ./
+COPY --from=build --chown=nodejs:nodejs /usr/src/app/dist ./dist
 
-# Copy the compiled output from the build stage (assuming it outputs to /dist)
-COPY --from=build /usr/src/app/dist ./dist
-
-# Switch to the non-root 'node' user for security
-USER node
-
-# Start the compiled application
-CMD ["node", "dist/server.js"]
+USER nodejs
+EXPOSE 3002
+CMD ["node", "dist/index.js"]

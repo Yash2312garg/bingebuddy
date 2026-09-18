@@ -36,7 +36,7 @@ app.get("/auth/v1/restaurant", (_req: Request, res: Response) => {
 });
 
 // ===== IMPORTANT: Updated Health Check =====
-app.get('auth/v1/health', (_req: Request, res: Response) => {
+app.get('/auth/v1/health', (_req: Request, res: Response) => {
   const isReady = (app as any).isReady;
 
   // If still initializing, return 503 Service Unavailable
