@@ -57,7 +57,7 @@ spec:
       containers:
         - name: notification-service
           # ⚠️ GitHub Actions CI updates this tag automatically
-          image: ghcr.io/yash2312garg/bingebuddy-notification-service:03d60b9
+          image: ghcr.io/yash2312garg/bingebuddy-notification-service:e9b30d5
           imagePullPolicy: Always
           ports:
             - name: http
