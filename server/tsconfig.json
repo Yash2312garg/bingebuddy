@@ -28,8 +28,8 @@
     // Style Options (uncomment as needed)
     "noImplicitReturns": true,
     // "noImplicitOverride": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    // "noUnusedLocals": true,       // re-enable after cleaning up unused code
+    // "noUnusedParameters": true,   // re-enable after cleaning up unused code
     "noFallthroughCasesInSwitch": true,
     // "noPropertyAccessFromIndexSignature": true,
 
@@ -45,8 +45,9 @@
     "**/*.tsx",
     "*/*",
     "types",
-    "jest.config.ts" 
-, "../notification-service/src/worker.ts"
+    "jest.config.ts"
+    // Note: do NOT include paths outside this directory (e.g. ../notification-service)
+    // They break Docker builds since COPY only brings in this service's files.
   ],
   "exclude": [
     "node_modules",

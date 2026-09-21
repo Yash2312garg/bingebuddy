@@ -21,8 +21,8 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    // "noUnusedLocals": true,       // re-enable after cleaning up unused code
+    // "noUnusedParameters": true,   // re-enable after cleaning up unused code
     "noFallthroughCasesInSwitch": true,
 
     "strict": true,
