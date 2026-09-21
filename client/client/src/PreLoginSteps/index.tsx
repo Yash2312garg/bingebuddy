@@ -31,31 +31,44 @@ const PreLoginSteps: React.FC = () => {
   });
 
 
-const changeRestaurantDetails = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const { name, value } = e.target;
+// Handles regular text input fields (Steps 1–3)
+// The 'eOrValue' is always a ChangeEvent here; the string branch is never hit for these steps.
+const changeRestaurantDetails = (
+  eOrValue: React.ChangeEvent<HTMLInputElement> | string,
+  _type?: "logo_url" | "full_img" | "reference_id"
+) => {
+  if (typeof eOrValue === "string") return; // not used in Steps 1-3
+  const { name, value } = eOrValue.target;
   if (name.startsWith("address.")) {
     const field = name.split(".")[1];
-    setResturantInfo({
-      ...restaurantInfo,
+    setResturantInfo((prev) => ({
+      ...prev,
       address: {
-        ...restaurantInfo.address,
-        [field]: value,
+        ...prev.address,
+        [field as string]: value,
       },
-    });
+    }));
   } else {
-    setResturantInfo({
-      ...restaurantInfo,
+    setResturantInfo((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   }
 };
 
-const setLogoAndRefeInformation = (value: string, type:"logo_url"|"full_img"|"reference_id" )=>{
-  setResturantInfo({
-    ...restaurantInfo,
-    [type]: value
-  })
-}
+// Handles file/reference uploads (Step 4 only)
+// The 'eOrValue' is always a string here; the ChangeEvent branch is never hit.
+const setLogoAndRefeInformation = (
+  eOrValue: React.ChangeEvent<HTMLInputElement> | string,
+  type?: "logo_url" | "full_img" | "reference_id"
+) => {
+  if (typeof eOrValue !== "string" || !type) return; // not used for ChangeEvent inputs
+  setResturantInfo((prev) => ({
+    ...prev,
+    [type]: eOrValue,
+  }));
+};
+
 
   function setNextStep() {
     console.log(step);
