@@ -25,16 +25,16 @@ spec:
   project: default
 
   # ── Source ──────────────────────────────────────────────────
-  # ArgoCD watches this git repo + branch + path
+  # ArgoCD watches this git repo + branch + path.
+  # kind-config.yaml and setup-cluster.sh were moved to cluster/
+  # so they are NOT in this path and don't need to be excluded.
   source:
     repoURL: https://github.com/Yash2312garg/bingebuddy
-    targetRevision: stage          # watches the stage branch
-    path: k8s                      # deploys everything in k8s/ directory
+    targetRevision: stage
+    path: k8s
     directory:
-      recurse: true                # pick up files in apps/, argocd/ subdirs
-      exclude: |
-        kind-config.yaml
-        setup-cluster.sh
+      recurse: true   # pick up files in apps/, argocd/ subdirectories
+
 
   # ── Destination ─────────────────────────────────────────────
   # Deploy into the local kind cluster
