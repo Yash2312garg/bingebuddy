@@ -13,3 +13,5 @@ data:
   DB_PORT: "5432"
   DB_NAME: "auth"
   DB_USER: "authadmin"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
