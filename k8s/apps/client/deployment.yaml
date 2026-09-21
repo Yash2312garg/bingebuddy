@@ -26,7 +26,7 @@ spec:
         - name: client
           # ⚠️ GitHub Actions CI updates this tag automatically
           # Production build served via nginx
-          image: ghcr.io/yash2312garg/bingebuddy-client:bcd76ff
+          image: ghcr.io/yash2312garg/bingebuddy-client:b846d2b
           imagePullPolicy: Always
           ports:
             - name: http
