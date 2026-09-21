@@ -7,20 +7,19 @@ metadata:
     app.kubernetes.io/managed-by: argocd
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    # Required for regex paths — ImplementationSpecific pathType alone isn't enough
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    # Rewrite: strip the matched prefix before forwarding to backend
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
 spec:
   rules:
     - host: bingebuddy.local
       http:
         paths:
           # ── Auth Service ─────────────────────────────────────
-          - path: /auth(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /auth
+            pathType: Prefix
             backend:
               service:
                 name: auth-service
@@ -28,8 +27,8 @@ spec:
                   number: 3002
 
           # ── Notification Service ──────────────────────────────
-          - path: /api/v1/notification(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /api/v1/notification
+            pathType: Prefix
             backend:
               service:
                 name: notification-service
@@ -37,9 +36,8 @@ spec:
                   number: 3001
 
           # ── Main App (API) ────────────────────────────────────
-          # Must come after /api/v1/notification (more specific first)
-          - path: /api(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /api
+            pathType: Prefix
             backend:
               service:
                 name: server
@@ -47,12 +45,10 @@ spec:
                   number: 3000
 
           # ── React Client (SPA) ───────────────────────────────
-          # Catch-all — must be last
-          - path: /()(.*)
-            pathType: ImplementationSpecific
+          - path: /
+            pathType: Prefix
             backend:
               service:
                 name: client
                 port:
                   number: 80
-
