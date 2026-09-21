@@ -1,9 +1,17 @@
+import type React from "react";
+
 export interface StepOneProps {
   setNextSteps: () => void;
   setPrevSteps?: () => void;
-  changeRestaurantDetails?: ((e:React.ChangeEvent<HTMLInputElement>)=>void )| ((value:string, type: "logo_url"|"full_img"|"reference_id")=>void)
-  restaurantInfo : PreloginDataInterface
+  // Unified signature: covers both (e: ChangeEvent) and (value: string, type: ...)
+  // Using a union caused TS2554 because TypeScript requires satisfying all overloads simultaneously.
+  changeRestaurantDetails?: (
+    eOrValue: React.ChangeEvent<HTMLInputElement> | string,
+    type?: "logo_url" | "full_img" | "reference_id"
+  ) => void;
+  restaurantInfo: PreloginDataInterface;
 }
+
 
 export interface PreloginDataInterface{
     name: string

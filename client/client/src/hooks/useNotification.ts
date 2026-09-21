@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 
 export interface Notification {
+  id: string;
   recipientType: "USER" | "RESTAURANT" | "ADMIN";
   title: string;
   message: string;
   action_url: string;
   metadata: Record<string, unknown>;
   is_read: boolean;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  created_at: string;
 }
+
 
 export function useNotification(recipientId: string, recipientType: string) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
