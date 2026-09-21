@@ -93,3 +93,10 @@ client/client/.env
 # Uncomment if you want to ignore nested ones:
 # client/client/package-lock.json
 # server/package-lock.json
+
+# =========================
+# Kubernetes Secrets
+# =========================
+# Never commit raw K8s Secret manifests — secrets are injected
+# by GitHub Actions from GitHub Secrets during CI/CD.
+k8s/**/secret.yaml
