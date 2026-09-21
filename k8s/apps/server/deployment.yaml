@@ -3,7 +3,7 @@
 # Runs the main BingeBuddy backend (Express/Node.js)
 #
 # Image tag is managed by GitHub Actions CI:
-#   - CI builds and pushes: ghcr.io/yash2312garg/bingebuddy-server:b846d2b
+#   - CI builds and pushes: ghcr.io/yash2312garg/bingebuddy-server:b29d8b8
 #   - CI updates this file with the new SHA
 #   - ArgoCD detects the change and syncs the cluster
 # ============================================================
@@ -41,7 +41,7 @@ spec:
       containers:
         - name: server
           # ⚠️ GitHub Actions CI updates this tag automatically
-          image: ghcr.io/yash2312garg/bingebuddy-server:b846d2b
+          image: ghcr.io/yash2312garg/bingebuddy-server:b29d8b8
           imagePullPolicy: Always
           ports:
             - name: http
