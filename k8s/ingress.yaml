@@ -1,14 +1,3 @@
-# ============================================================
-# BingeBuddy — nginx Ingress
-#
-# Routes external traffic to the correct service based on path.
-# Requires nginx-ingress-controller installed in the cluster.
-#
-# Local access: add to /etc/hosts:
-#   127.0.0.1  bingebuddy.local
-#
-# Then visit: http://bingebuddy.local
-# ============================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -17,51 +6,53 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: argocd
   annotations:
-    # Use nginx ingress controller
     kubernetes.io/ingress.class: "nginx"
-    # Strip the path prefix before forwarding to backend
+    # Required for regex paths — ImplementationSpecific pathType alone isn't enough
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # Rewrite: strip the matched prefix before forwarding to backend
     nginx.ingress.kubernetes.io/rewrite-target: /$2
-    # Enable CORS for API routes
-    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
     nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
 spec:
   rules:
     - host: bingebuddy.local
       http:
         paths:
-          # ── Auth Service ──────────────────────────────────
+          # ── Auth Service ─────────────────────────────────────
           - path: /auth(/|$)(.*)
-            pathType: Prefix
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: auth-service
                 port:
                   number: 3002
 
-          # ── Notification Service ──────────────────────────
+          # ── Notification Service ──────────────────────────────
           - path: /api/v1/notification(/|$)(.*)
-            pathType: Prefix
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: notification-service
                 port:
                   number: 3001
 
-          # ── Main App (API) ────────────────────────────────
+          # ── Main App (API) ────────────────────────────────────
+          # Must come after /api/v1/notification (more specific first)
           - path: /api(/|$)(.*)
-            pathType: Prefix
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: server
                 port:
                   number: 3000
 
-          # ── React Client (SPA) ────────────────────────────
+          # ── React Client (SPA) ───────────────────────────────
           # Catch-all — must be last
           - path: /()(.*)
-            pathType: Prefix
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: client
                 port:
                   number: 80
+
