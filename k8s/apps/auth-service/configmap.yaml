@@ -16,3 +16,4 @@ data:
   REDIS_HOST: "redis"
   REDIS_PORT: "6379"
   REDIS_URL: "redis://redis:6379"
+  RABBITMQ_URL: "amqp://yash:Yash@123@rabbitmq:5672"
