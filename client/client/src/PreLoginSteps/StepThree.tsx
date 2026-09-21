@@ -5,7 +5,6 @@ import "./StepThree.css";
 import { Input } from "../Components/Input/Input";
 import Btn from "../Components/Buttons/Button";
 import type { StepOneProps } from "../Types/PreLoginSteps";
-import InfoIcon from "../assets/Info.svg";
 import MapImage from "../assets/map.png";
 import { useState,useCallback,useEffect } from "react";
 import type { RestaurantAddress } from "../Types/PreLoginSteps";
@@ -61,7 +60,7 @@ const StepThree: React.FC<StepOneProps> = ({
           <div className="Infmtn-cntr-step3-left">
             <Input>
               <Input.Label>
-                Address <img src={InfoIcon} alt="" />
+                Full Address
               </Input.Label>
               <Input.Field
                 type="Search"
@@ -80,7 +79,7 @@ const StepThree: React.FC<StepOneProps> = ({
           <div className="Infmtn-cntr-step3-right">
             <Input>
               <Input.Label>
-                Street <img src={InfoIcon} alt="" />
+                Street
               </Input.Label>
               <Input.Field
                 type="Search"
@@ -94,7 +93,7 @@ const StepThree: React.FC<StepOneProps> = ({
             <div className="Infmtn-cntr-step3-right-new">
               <Input>
                 <Input.Label>
-                  City <img src={InfoIcon} alt="" />
+                  City 
                 </Input.Label>
                 <Input.Field type="Search"
                 name="address.city"
@@ -106,7 +105,7 @@ const StepThree: React.FC<StepOneProps> = ({
               </Input>
               <Input>
                 <Input.Label>
-                  State <img src={InfoIcon} alt="" />
+                  State 
                 </Input.Label>
                 <Input.Field type="Search"
                 name="address.state"
@@ -119,7 +118,7 @@ const StepThree: React.FC<StepOneProps> = ({
             </div>
             <Input>
               <Input.Label>
-                Postal Code <img src={InfoIcon} alt="" />
+                Postal Code 
               </Input.Label>
               <Input.Field type="Search"
               name="address.postal_code"

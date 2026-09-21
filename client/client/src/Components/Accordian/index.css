@@ -1,0 +1,140 @@
+
+/* =========================
+   ACCORDION
+   ========================= */
+
+.sidebar-navigation {
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+
+  gap: 4px;
+}
+
+
+/* =========================
+   NAVIGATION ITEM
+   ========================= */
+
+.navigation-item-wrapper {
+  width: 100%;
+}
+
+.navigation-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  width: 100%;
+  min-height: 40px;
+
+  padding: 8px 10px;
+
+  box-sizing: border-box;
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  color: var(--Primary-Text-Color);
+
+  font-size: 14px;
+  font-weight: 400;
+
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+
+/* =========================
+   HOVER
+   ========================= */
+
+.navigation-item:hover {
+  background-color: #eee6ff;
+  color: var(--Brand-Primary-Colors);
+}
+
+
+/* =========================
+   ACTIVE ROUTE
+   ========================= */
+
+.navigation-item-active {
+  background-color: var(--Brand-Primary-Colors);
+
+  color: #ffffff;
+
+  font-weight: 500;
+}
+
+
+/* =========================
+   ACTIVE PARENT
+   ========================= */
+
+.navigation-item-parent-active {
+  color: var(--Brand-Primary-Colors);
+
+  font-weight: 500;
+}
+
+
+/* =========================
+   ITEM CONTENT
+   ========================= */
+
+.navigation-item-content {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  min-width: 0;
+}
+
+
+/* =========================
+   LABEL
+   ========================= */
+
+.navigation-item-label {
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* =========================
+   ARROW
+   ========================= */
+
+.navigation-arrow {
+  flex-shrink: 0;
+
+  font-size: 18px;
+
+  transition: transform 200ms ease;
+}
+
+.navigation-arrow-open {
+  transform: rotate(90deg);
+}
+
+
+/* =========================
+   CHILDREN
+   ========================= */
+
+.navigation-children {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+
+  margin-top: 2px;
+}
+

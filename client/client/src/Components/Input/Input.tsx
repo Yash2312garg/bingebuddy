@@ -84,7 +84,6 @@ const InputField: React.FC<InputFieldProps> = ({
   ...rest
 }) => {
   const { id, disabled, error, setError } = useInputContext();
-  console.log(error)
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     if (setError) setError(null);
     if (rest.onFocus) rest.onFocus(e); 

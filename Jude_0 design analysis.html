@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DSA Evaluation Pipeline — Deep Design Analysis</title>
+<style>
+:root {
+  --ink:#0c0c10; --paper:#f5f4f0; --card:#ffffff; --paper2:#eeece6;
+  --red:#e8380d; --blue:#1a6ef5; --green:#00a86b;
+  --amber:#d97706; --purple:#7c3aed; --teal:#0c6e5a;
+  --border:rgba(12,12,16,0.1); --muted:#64625c;
+  --mono:'IBM Plex Mono',monospace; --sans:'Inter',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:14px;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+
+nav{position:sticky;top:0;z-index:200;background:var(--ink);display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:46px;border-bottom:2px solid var(--red);gap:12px}
+.nav-brand{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--red);font-weight:600;white-space:nowrap}
+.nav-links{display:flex;gap:2px;overflow-x:auto}
+.nav-link{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;padding:4px 8px;color:rgba(245,244,240,.45);text-decoration:none;border-radius:2px;white-space:nowrap}
+.nav-link:hover{color:var(--paper);background:rgba(255,255,255,.08)}
+
+.hero{padding:60px 40px 48px;max-width:1100px;margin:0 auto;border-bottom:1px solid var(--border)}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--red);text-transform:uppercase;margin-bottom:12px}
+.hero h1{font-size:40px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
+.hero h1 em{font-style:normal;color:var(--red)}
+.hero-sub{margin-top:14px;font-size:14px;color:var(--muted);max-width:660px}
+
+.stat-row{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+.stat{background:var(--ink);color:var(--paper);padding:16px 20px;border-radius:4px;min-width:140px}
+.stat-n{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:rgba(245,244,240,.4);text-transform:uppercase;margin-bottom:4px}
+.stat-v{font-size:24px;font-weight:800;line-height:1}
+.stat-s{font-family:var(--mono);font-size:10px;color:rgba(245,244,240,.35);margin-top:3px}
+
+.page{max-width:1100px;margin:0 auto;padding:0 40px}
+.section{padding:56px 0 44px;border-bottom:1px solid var(--border)}
+
+.sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
+.sec-num{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--red);background:rgba(232,56,13,.08);padding:2px 8px;border-radius:2px}
+.sec-title{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.sec-desc{font-size:13px;color:var(--muted);max-width:750px;margin-bottom:24px;margin-top:6px;line-height:1.75}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:18px}
+.card-head{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.04em;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;display:inline-block}
+.card p,.card li{font-size:12.5px;color:var(--muted);line-height:1.7}
+.card p{margin-bottom:8px}
+.card p:last-child{margin-bottom:0}
+.card ul{padding-left:14px}
+.card li{margin-bottom:5px}
+
+.callout{display:flex;gap:10px;padding:12px 16px;border-radius:4px;font-size:12.5px;border-left:3px solid;margin:12px 0}
+.callout p{margin:0;color:var(--muted);line-height:1.65}
+.callout strong{color:var(--ink)}
+.ci{font-size:14px;flex-shrink:0;margin-top:2px}
+.warn{background:rgba(232,56,13,.05);border-color:var(--red)}
+.info{background:rgba(26,110,245,.05);border-color:var(--blue)}
+.ok{background:rgba(0,168,107,.05);border-color:var(--green)}
+.note{background:rgba(217,119,6,.05);border-color:var(--amber)}
+.think{background:rgba(124,58,237,.05);border-color:var(--purple)}
+
+/* pipeline */
+.pipe{display:flex;align-items:stretch;gap:0;margin:16px 0;overflow-x:auto}
+.ps{flex:1;min-width:120px;background:var(--card);border:1px solid var(--border);padding:12px 10px;text-align:center;position:relative;font-size:12px}
+.ps+.ps{border-left:none}
+.ps::after{content:'→';position:absolute;right:-9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;z-index:1;background:var(--card);padding:0 1px}
+.ps:last-child::after{display:none}
+.ps-n{font-family:var(--mono);font-size:9px;color:var(--red);letter-spacing:.05em;margin-bottom:3px}
+.ps-t{font-size:11.5px;font-weight:600;margin-bottom:2px}
+.ps-s{font-size:10.5px;color:var(--muted);line-height:1.4}
+.ps.red{background:var(--red);border-color:var(--red)}
+.ps.red .ps-n,.ps.red .ps-t,.ps.red .ps-s{color:#fff}
+.ps.blu{background:rgba(26,110,245,.07);border-color:rgba(26,110,245,.3)}
+.ps.grn{background:rgba(0,168,107,.07);border-color:rgba(0,168,107,.3)}
+.ps.amb{background:rgba(217,119,6,.07);border-color:rgba(217,119,6,.3)}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin:14px 0}
+th{font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);padding:8px 12px;text-align:left;font-weight:500}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;font-size:12.5px}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,0,0,.015)}
+
+/* verdict */
+.v{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:2px}
+.v-ac{background:#d1fae5;color:#065f46}
+.v-wa{background:#fee2e2;color:#991b1b}
+.v-tle{background:#fef3c7;color:#92400e}
+.v-mle{background:#ede9fe;color:#4c1d95}
+.v-re{background:#fce7f3;color:#9d174d}
+.v-ce{background:#f1f5f9;color:#475569}
+.v-ole{background:#fee2e2;color:#991b1b}
+.v-pe{background:#f1f5f9;color:#475569}
+
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:2px;font-weight:500}
+.t-red{background:rgba(232,56,13,.1);color:var(--red)}
+.t-blue{background:rgba(26,110,245,.1);color:var(--blue)}
+.t-green{background:rgba(0,168,107,.1);color:var(--green)}
+.t-amber{background:rgba(217,119,6,.1);color:var(--amber)}
+.t-purple{background:rgba(124,58,237,.1);color:var(--purple)}
+.t-gray{background:rgba(100,98,92,.12);color:var(--muted)}
+
+/* pain point block */
+.pain{background:#fff;border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:0 6px 6px 0;padding:14px 16px;margin:10px 0}
+.pain-title{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--purple);letter-spacing:.04em;margin-bottom:6px}
+.pain p{font-size:12.5px;color:var(--muted);line-height:1.7;margin-bottom:6px}
+.pain ul{font-size:12.5px;color:var(--muted);padding-left:14px;line-height:1.85}
+
+/* decision block */
+.decision{background:#fff;border:1px solid rgba(0,168,107,.3);border-left:3px solid var(--green);border-radius:0 6px 6px 0;padding:14px 16px;margin:10px 0}
+.decision-title{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--teal);letter-spacing:.04em;margin-bottom:6px}
+.decision p,.decision li{font-size:12.5px;color:var(--muted);line-height:1.7}
+.decision ul{padding-left:14px;line-height:1.85}
+
+.slbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;margin-top:24px}
+
+/* phase row */
+.phases{border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-top:16px}
+.phase-row{display:grid;grid-template-columns:180px 1fr;border-bottom:1px solid var(--border)}
+.phase-row:last-child{border-bottom:none}
+.ph-l{padding:18px 14px;background:var(--paper2);border-right:1px solid var(--border)}
+.ph-num{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--red)}
+.ph-name{font-weight:700;font-size:12.5px;margin-top:3px}
+.ph-body{padding:18px}
+.ph-body p,.ph-body li{font-size:12.5px;color:var(--muted);line-height:1.7}
+.ph-body ul{padding-left:14px}
+
+footer{padding:32px 40px;background:var(--ink);color:rgba(245,244,240,.3);font-family:var(--mono);font-size:10px;letter-spacing:.06em;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:48px}
+
+hr{border:none;border-top:1px solid var(--border);margin:20px 0}
+
+/* ── DIAGRAM STYLES ── */
+
+/* Architecture diagram */
+.arch-diagram{background:var(--ink);border-radius:8px;padding:28px;margin:20px 0;overflow-x:auto}
+.arch-row{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:nowrap;min-width:600px}
+.arch-node{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:10px 14px;text-align:center;min-width:100px;position:relative}
+.arch-node.highlight{background:rgba(232,56,13,.15);border-color:rgba(232,56,13,.5)}
+.arch-node.blue{background:rgba(26,110,245,.15);border-color:rgba(26,110,245,.4)}
+.arch-node.green{background:rgba(0,168,107,.15);border-color:rgba(0,168,107,.4)}
+.arch-node.amber{background:rgba(217,119,6,.15);border-color:rgba(217,119,6,.4)}
+.arch-node.purple{background:rgba(124,58,237,.15);border-color:rgba(124,58,237,.4)}
+.arch-node-label{font-family:var(--mono);font-size:10px;font-weight:600;color:rgba(255,255,255,.9);letter-spacing:.03em}
+.arch-node-sub{font-size:9.5px;color:rgba(255,255,255,.4);margin-top:3px;line-height:1.35}
+.arch-arrow{display:flex;align-items:center;padding:0 4px;color:rgba(255,255,255,.3);font-size:16px;flex-shrink:0}
+.arch-arrow-label{font-size:9px;color:rgba(255,255,255,.35);font-family:var(--mono);text-align:center;margin-top:2px}
+.arch-arrow-wrap{display:flex;flex-direction:column;align-items:center;padding:0 2px}
+.arch-section-label{font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:rgba(255,255,255,.3);text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.07)}
+
+/* Vertical flow diagram */
+.vflow{display:flex;flex-direction:column;gap:0;margin:16px 0}
+.vf-item{display:grid;grid-template-columns:200px 1fr;border:1px solid var(--border);background:var(--card)}
+.vf-item+.vf-item{border-top:none}
+.vf-item:first-child{border-radius:6px 6px 0 0}
+.vf-item:last-child{border-radius:0 0 6px 6px}
+.vf-step{padding:14px 16px;background:var(--paper2);border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center}
+.vf-step-num{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--red)}
+.vf-step-name{font-size:13px;font-weight:700;margin-top:3px;line-height:1.3}
+.vf-body{padding:14px 16px}
+.vf-body p{font-size:12.5px;color:var(--muted);line-height:1.7;margin-bottom:6px}
+.vf-body p:last-child{margin-bottom:0}
+.vf-body .why{font-family:var(--mono);font-size:9.5px;color:var(--blue);background:rgba(26,110,245,.07);padding:2px 7px;border-radius:2px;display:inline-block;margin-bottom:6px}
+.vf-body .what{font-family:var(--mono);font-size:9.5px;color:var(--green);background:rgba(0,168,107,.07);padding:2px 7px;border-radius:2px;display:inline-block;margin-bottom:6px}
+.vf-body .risk{font-family:var(--mono);font-size:9.5px;color:var(--red);background:rgba(232,56,13,.07);padding:2px 7px;border-radius:2px;display:inline-block;margin-bottom:6px}
+
+/* State machine diagram */
+.fsm{display:flex;flex-direction:column;gap:2px;margin:16px 0}
+.fsm-row{display:flex;align-items:center;gap:8px}
+.fsm-state{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 16px;font-family:var(--mono);font-size:11px;font-weight:600;white-space:nowrap}
+.fsm-state.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.fsm-state.terminal-ok{background:var(--green);color:#fff;border-color:var(--green)}
+.fsm-state.terminal-err{background:var(--red);color:#fff;border-color:var(--red)}
+.fsm-state.warn{background:rgba(217,119,6,.1);border-color:var(--amber);color:var(--amber)}
+.fsm-arrow{font-size:20px;color:var(--muted);flex-shrink:0}
+.fsm-condition{font-size:10px;color:var(--muted);font-family:var(--mono);margin-left:4px;flex-shrink:0}
+
+/* Comparison grid */
+.cmp{display:grid;grid-template-columns:auto 1fr 1fr;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:14px 0}
+.cmp-head{font-family:var(--mono);font-size:10px;letter-spacing:.07em;font-weight:600;padding:10px 14px;background:var(--paper2);border-bottom:1px solid var(--border)}
+.cmp-head.pub{color:var(--blue)}
+.cmp-head.str{color:var(--green)}
+.cmp-row-label{padding:10px 14px;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);border-right:1px solid var(--border);background:var(--paper2)}
+.cmp-row-label:last-of-type{border-bottom:none}
+.cmp-cell{padding:10px 14px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);border-left:1px solid var(--border)}
+.cmp-cell:nth-child(3n){border-right:none}
+.cmp-cell.good{color:var(--green)}
+.cmp-cell.bad{color:var(--red)}
+.cmp-cell.neutral{color:var(--amber)}
+
+/* Deep insight block */
+.insight{background:var(--paper2);border:1px solid var(--border);border-radius:6px;padding:20px;margin:16px 0}
+.insight-head{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.insight-head::before{content:'◆';font-size:8px}
+.insight p{font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:8px}
+.insight p:last-child{margin-bottom:0}
+.insight strong{color:var(--ink)}
+
+/* Why/How/What trio */
+.trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border-radius:6px;overflow:hidden;margin:14px 0}
+.trio-item{background:var(--card);padding:16px}
+.trio-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.trio-item:nth-child(1) .trio-label{color:var(--blue)}
+.trio-item:nth-child(2) .trio-label{color:var(--green)}
+.trio-item:nth-child(3) .trio-label{color:var(--amber)}
+.trio-item p{font-size:12.5px;color:var(--muted);line-height:1.7}
+
+/* Security ring diagram */
+.rings{position:relative;width:100%;max-width:480px;margin:20px auto;aspect-ratio:1}
+.ring-outer,.ring-mid,.ring-inner,.ring-core{position:absolute;border-radius:50%;border:2px dashed;display:flex;align-items:center;justify-content:center;top:50%;left:50%;transform:translate(-50%,-50%)}
+.ring-outer{width:100%;height:100%;border-color:rgba(232,56,13,.35);background:rgba(232,56,13,.02)}
+.ring-mid{width:70%;height:70%;border-color:rgba(217,119,6,.4);background:rgba(217,119,6,.03)}
+.ring-inner{width:45%;height:45%;border-color:rgba(26,110,245,.45);background:rgba(26,110,245,.04)}
+.ring-core{width:22%;height:22%;border-color:rgba(0,168,107,.6);background:rgba(0,168,107,.1);border-style:solid}
+.ring-label{font-family:var(--mono);font-size:10px;font-weight:600;text-align:center}
+.ring-outer-lbl{position:absolute;top:6px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9.5px;color:rgba(232,56,13,.8);white-space:nowrap}
+.ring-mid-lbl{position:absolute;top:8px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;color:rgba(217,119,6,.9);white-space:nowrap}
+.ring-inner-lbl{position:absolute;top:9px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:8.5px;color:rgba(26,110,245,.9);white-space:nowrap}
+
+/* Scoring tree diagram */
+.score-tree{background:var(--ink);border-radius:8px;padding:24px;margin:16px 0;overflow-x:auto}
+.st-root{display:flex;flex-direction:column;align-items:center;gap:0;min-width:600px}
+.st-row{display:flex;gap:16px;align-items:flex-start;justify-content:center;margin-top:16px}
+.st-node{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:10px 14px;min-width:130px;text-align:center}
+.st-node.root-node{background:rgba(26,110,245,.2);border-color:rgba(26,110,245,.5);min-width:200px}
+.st-node.per-test{background:rgba(0,168,107,.15);border-color:rgba(0,168,107,.4)}
+.st-node.all-or-nothing{background:rgba(217,119,6,.15);border-color:rgba(217,119,6,.4)}
+.st-node.test-pass{background:rgba(0,168,107,.08);border-color:rgba(0,168,107,.25)}
+.st-node.test-fail{background:rgba(232,56,13,.08);border-color:rgba(232,56,13,.25)}
+.st-node-title{font-family:var(--mono);font-size:10px;font-weight:600;color:rgba(255,255,255,.85)}
+.st-node-sub{font-size:9.5px;color:rgba(255,255,255,.45);margin-top:3px;line-height:1.35}
+.st-connector{width:1px;height:16px;background:rgba(255,255,255,.15);margin:0 auto}
+.st-h-line{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:2px}
+.st-h-seg{height:1px;background:rgba(255,255,255,.15);flex:1;max-width:80px}
+.st-v-down{width:1px;height:12px;background:rgba(255,255,255,.15);margin:0 auto}
+
+/* SSE lifecycle diagram */
+.sse-flow{display:grid;grid-template-columns:1fr 30px 1fr 30px 1fr;gap:0;margin:16px 0;align-items:stretch}
+.sse-actor{background:var(--ink);border-radius:6px;padding:0;overflow:hidden}
+.sse-actor-head{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.05em;padding:10px 14px;text-align:center}
+.sse-actor-head.client{background:rgba(26,110,245,.3);color:rgba(255,255,255,.9)}
+.sse-actor-head.server{background:rgba(217,119,6,.3);color:rgba(255,255,255,.9)}
+.sse-actor-head.worker{background:rgba(0,168,107,.3);color:rgba(255,255,255,.9)}
+.sse-events{padding:10px;display:flex;flex-direction:column;gap:6px}
+.sse-event{font-family:var(--mono);font-size:9.5px;background:rgba(255,255,255,.07);border-radius:3px;padding:5px 8px;color:rgba(255,255,255,.7);line-height:1.4}
+.sse-event.out{text-align:right}
+.sse-arrow-col{display:flex;flex-direction:column;align-items:center;justify-content:space-around;font-size:16px;color:rgba(255,255,255,.2)}
+.sse-arrow-col span{font-size:11px}
+
+/* Normalisation chain */
+.norm-chain{display:flex;flex-direction:column;gap:4px;margin:14px 0}
+.nc-step{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:12px 14px}
+.nc-num{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--red);flex-shrink:0;min-width:22px}
+.nc-body{flex:1}
+.nc-title{font-size:12.5px;font-weight:600;margin-bottom:3px}
+.nc-why{font-size:11.5px;color:var(--muted);line-height:1.6}
+.nc-example{font-family:var(--mono);font-size:10.5px;background:var(--paper2);padding:4px 8px;border-radius:3px;margin-top:5px;color:var(--ink);opacity:.8}
+
+/* Backoff diagram */
+.backoff{display:flex;align-items:flex-end;gap:6px;margin:16px 0;background:var(--ink);padding:20px;border-radius:6px}
+.backoff-bar{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.bb-bar{width:100%;background:rgba(26,110,245,.6);border-radius:2px 2px 0 0;min-height:4px}
+.bb-label{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);text-align:center;line-height:1.3}
+
+/* schema */
+.schema{background:#111118;color:#ddd8ce;font-family:var(--mono);font-size:11.5px;padding:20px;border-radius:4px;overflow-x:auto;line-height:1.7;white-space:pre}
+.tn{color:#fde68a;font-weight:600}.cn{color:#7dd3fc}.ct{color:#86efac}.cc{color:#4a5568}.pk{color:var(--red);font-size:9px;vertical-align:super}
+
+/* decision tree */
+.dtree{background:var(--ink);border-radius:8px;padding:24px;margin:16px 0;overflow-x:auto}
+.dt-row{display:flex;gap:20px;align-items:center;justify-content:flex-start;margin-bottom:10px}
+.dt-node{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:4px;padding:8px 14px;font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.8);white-space:nowrap}
+.dt-node.question{background:rgba(26,110,245,.2);border-color:rgba(26,110,245,.4);border-radius:20px}
+.dt-node.yes{background:rgba(0,168,107,.15);border-color:rgba(0,168,107,.4)}
+.dt-node.no{background:rgba(232,56,13,.15);border-color:rgba(232,56,13,.4)}
+.dt-edge{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.3);padding:0 4px}
+
+@media(max-width:860px){
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .trio{grid-template-columns:1fr}
+  .hero{padding:36px 20px 28px}
+  .page{padding:0 20px}
+  .phase-row,.vf-item{grid-template-columns:1fr}
+  .sse-flow{grid-template-columns:1fr}
+  .cmp{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">DSA EVAL PIPELINE // Deep Design Analysis</span>
+  <div class="nav-links">
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#considerations">Considerations</a>
+    <a class="nav-link" href="#pipeline">Pipeline</a>
+    <a class="nav-link" href="#schema">Schema</a>
+    <a class="nav-link" href="#merger">Code Merger</a>
+    <a class="nav-link" href="#execution">Execution</a>
+    <a class="nav-link" href="#scoring">Scoring</a>
+    <a class="nav-link" href="#verdicts">Verdicts</a>
+    <a class="nav-link" href="#realtime">Real-time</a>
+    <a class="nav-link" href="#security">Security</a>
+    <a class="nav-link" href="#painpoints">Pain Points</a>
+    <a class="nav-link" href="#phases">Build Phases</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero page">
+  <div class="eyebrow">// FRAP v2 — DSA Evaluation Module — Enriched Design Analysis</div>
+  <h1>Deep Design Analysis<br>of the <em>DSA Evaluation Pipeline</em></h1>
+  <p class="hero-sub">Every stage, every decision, every trade-off — explained with diagrams, deep rationale, and explicit answers to why, how, and what. This document is the complete mental model for the evaluation pipeline, not just its surface design.</p>
+  <div class="stat-row">
+    <div class="stat"><div class="stat-n">Pipeline Stages</div><div class="stat-v">8</div><div class="stat-s">Submit → Score</div></div>
+    <div class="stat"><div class="stat-n">Execution Modes</div><div class="stat-v">2</div><div class="stat-s">Run · Submit</div></div>
+    <div class="stat"><div class="stat-n">Verdict Types</div><div class="stat-v">8</div><div class="stat-s">AC WA TLE MLE RE CE OLE PE</div></div>
+    <div class="stat"><div class="stat-n">Pain Points</div><div class="stat-v">11</div><div class="stat-s">Identified &amp; graded</div></div>
+    <div class="stat"><div class="stat-n">Scoring Policies</div><div class="stat-v">2</div><div class="stat-s">per_test · all_or_nothing</div></div>
+    <div class="stat"><div class="stat-n">Languages</div><div class="stat-v">8</div><div class="stat-s">Python · Java · C++ · JS + 4 more</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ 01 — OVERVIEW ═══════════════════════════ -->
+<section class="section page" id="overview">
+  <div class="sec-head">
+    <span class="sec-num">01 // OVERVIEW</span>
+    <h2 class="sec-title">What the DSA evaluation module is responsible for — and why it's hard</h2>
+  </div>
+  <p class="sec-desc">The evaluation module sits downstream of question authoring and upstream of the score card. Its job sounds simple: run code, check output. But every step carries subtlety — correctness, security, fairness, latency, and reliability must all be preserved simultaneously. This section explains the problem space before diving into the design.</p>
+
+  <div class="insight">
+    <div class="insight-head">Why is this harder than it looks?</div>
+    <p>Evaluating code is fundamentally different from evaluating a form submission or a database query. You are running arbitrary, untrusted programs from candidates you know nothing about. The program can contain infinite loops, gigabytes of output, fork bombs, network calls, file system writes, or attempts to read environment variables. It may be written in languages with entirely different runtime semantics. It may produce numerically correct output with different formatting. All of this must be handled correctly, fairly, and in under 30 seconds — while streaming live progress to the candidate's browser.</p>
+    <p>That is why the design has 8 stages, 11 known pain points, and a dedicated execution sandbox (Judge0) instead of a naive <code>exec()</code> call.</p>
+  </div>
+
+  <div class="slbl">System context — where this module lives</div>
+  <div class="arch-diagram">
+    <div class="arch-section-label">FRAP v2 System Boundary</div>
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:700px">
+
+      <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+        <div class="arch-node blue">
+          <div class="arch-node-label">Candidate Browser</div>
+          <div class="arch-node-sub">Monaco Editor<br/>SSE listener</div>
+        </div>
+        <div class="arch-arrow-wrap"><div class="arch-arrow">→</div><div class="arch-arrow-label">HTTPS / SSE</div></div>
+        <div class="arch-node highlight">
+          <div class="arch-node-label">API Gateway</div>
+          <div class="arch-node-sub">Auth · Rate-limit<br/>POST /submit</div>
+        </div>
+        <div class="arch-arrow-wrap"><div class="arch-arrow">→</div><div class="arch-arrow-label">202 Accepted</div></div>
+        <div class="arch-node amber">
+          <div class="arch-node-label">BullMQ Queue</div>
+          <div class="arch-node-sub">Redis-backed<br/>DSA_GRADE jobs</div>
+        </div>
+        <div class="arch-arrow-wrap"><div class="arch-arrow">→</div><div class="arch-arrow-label">dequeue</div></div>
+        <div class="arch-node green">
+          <div class="arch-node-label">Grading Worker</div>
+          <div class="arch-node-sub">Merge · Dispatch<br/>Score · Emit SSE</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;justify-content:flex-end;gap:6px;padding-right:60px">
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center;margin-top:-8px">
+          <div style="color:rgba(255,255,255,.25);font-size:18px">↓</div>
+          <div class="arch-arrow-label" style="margin-top:0">batch submit</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+        <div class="arch-node" style="background:rgba(124,58,237,.15);border-color:rgba(124,58,237,.4)">
+          <div class="arch-node-label">PostgreSQL DB</div>
+          <div class="arch-node-sub">sessions · submissions<br/>dsa_test_results</div>
+        </div>
+        <div class="arch-arrow-wrap"><div class="arch-arrow">←</div><div class="arch-arrow-label">read question / stubs</div></div>
+        <div class="arch-node green" style="opacity:.6">
+          <div class="arch-node-label">Grading Worker</div>
+        </div>
+        <div class="arch-arrow-wrap"><div class="arch-arrow">→</div><div class="arch-arrow-label">internal only</div></div>
+        <div class="arch-node highlight">
+          <div class="arch-node-label">Judge0 Cluster</div>
+          <div class="arch-node-sub">isolate sandbox<br/>per-submission</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="g3" style="margin-top:20px">
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--blue)"></span>SCOPE IN</div>
+      <ul>
+        <li>Receiving and validating a DSA code submission</li>
+        <li>Code Merger: candidate code + hidden driver per language</li>
+        <li>Dispatching to Judge0 in batch mode</li>
+        <li>Polling, parsing, and normalising Judge0 output</li>
+        <li>8-verdict handling with correct halt logic</li>
+        <li>Subtask group scoring (all-or-nothing + per-test)</li>
+        <li>Writing idempotent results to DB</li>
+        <li>Pushing real-time progress via SSE to the candidate</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--red)"></span>SCOPE OUT</div>
+      <ul>
+        <li>Framework (React/Vue/Spring) evaluation — separate pipeline</li>
+        <li>MCQ auto-scoring — handled at submission time, no execution</li>
+        <li>Question authoring and test case management</li>
+        <li>Candidate identity / authentication</li>
+        <li>Proctoring / integrity event collection (adjacent module)</li>
+        <li>Recruiter analytics and reporting</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--green)"></span>KEY INHERITED DECISIONS (from FRAP v2)</div>
+      <ul>
+        <li>Execution engine: <strong>Judge0</strong> (not custom Docker runner)</li>
+        <li>Queue: <strong>BullMQ on Redis</strong> — async, no blocking API</li>
+        <li>Languages: <strong>judge0_language_id</strong> as the routing key</li>
+        <li>Test cases: inline (small) or <strong>S3-keyed</strong> (large)</li>
+        <li>Driver: stored in <code>dsa_language_stubs.hidden_driver</code>, merged server-side only</li>
+        <li>Score storage: idempotent upsert on <code>sessions</code> + <code>dsa_test_results</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout info" style="margin-top:16px">
+    <span class="ci">ℹ</span>
+    <p><strong>Why Judge0 and not a custom Docker sandbox?</strong> Judge0 provides a hardened isolate sandbox with per-process cgroup limits, battle-tested across 20+ languages, and a well-understood batch API. Building an equivalent from scratch would take months and introduce new security surface. The trade-off is vendor coupling and the CVE exposure documented in Section 10 — both manageable with the hardening checklist.</p>
+  </div>
+
+  <div class="callout info" style="margin-top:8px">
+    <span class="ci">ℹ</span>
+    <p><strong>Why BullMQ and not synchronous execution?</strong> A DSA submission with 20 hidden test cases can take 10–30 seconds to fully grade. An HTTP connection that holds open for 30 seconds per candidate is not scalable — it blocks a Node.js event loop thread and any upstream reverse proxy timeout will kill it. BullMQ decouples the HTTP response (instant 202) from the grading work, allowing the API to serve thousands of candidates simultaneously while a pool of dedicated worker processes handles the heavy lifting in the background.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 02 — CONSIDERATIONS ═══════════════════════════ -->
+<section class="section page" id="considerations">
+  <div class="sec-head">
+    <span class="sec-num">02 // DESIGN CONSIDERATIONS</span>
+    <h2 class="sec-title">Every factor accounted for — the full problem space</h2>
+  </div>
+  <p class="sec-desc">Before writing a single line of code, a well-designed system enumerates all the forces shaping it. These are the constraints, invariants, and edge cases that drove every decision in this design. Missing any of them produces bugs that are hard to trace back to root cause.</p>
+
+  <div class="slbl">A — Correctness considerations</div>
+
+  <div class="vflow">
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">C1</div><div class="vf-step-name">Output normalisation must be custom</div></div>
+      <div class="vf-body">
+        <span class="why">WHY</span>
+        <p>Judge0's built-in <code>expected_output</code> comparison is a raw byte-for-byte string match. It fails on trailing spaces that print functions often emit, Windows-style <code>\r\n</code> line endings from Java/Windows programs, float precision differences (0.999999 vs 1.0), and case sensitivity. A correct solution would receive WA for cosmetic reasons.</p>
+        <span class="what">WHAT</span>
+        <p>All output comparison happens in the grading worker using a multi-step normalisation chain. <code>expected_output</code> in the Judge0 payload is always set to <code>null</code> — we never let Judge0 compare. The worker fetches both actual and expected, normalises both identically, then compares. This is detailed in Section 07.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">C2</div><div class="vf-step-name">Driver merge strategy is language-specific</div></div>
+      <div class="vf-body">
+        <span class="why">WHY</span>
+        <p>Languages have fundamentally different file-level structure. Python: no entry point — just append the driver after the class. Java: multi-class files are legal — append a second <code>Main</code> class. C++: includes must be at the top — you cannot append includes to the bottom of a file. JavaScript (Node): module exports differ from global functions. A generic string-concat merger silently produces invalid code in every language except Python.</p>
+        <span class="what">WHAT</span>
+        <p>The merger uses a <strong>strategy map</strong>: <code>&#123; language_id: MergeStrategy &#125;</code>. Each strategy implements a <code>merge(starterCode, hiddenDriver): string</code> interface differently. Adding a new language means registering a new strategy. Missing strategy → explicit error, not silent broken code. Detailed in Section 05.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">C3</div><div class="vf-step-name">CE must halt all remaining test dispatches</div></div>
+      <div class="vf-body">
+        <span class="why">WHY</span>
+        <p>If a candidate's code has a compile error, it will compile-error on <em>every</em> test case — not just the first. Dispatching all 20 test cases to Judge0 when the first one returns CE wastes 19 execution slots and delays feedback for other candidates queued behind. There is zero information gained by running the other 19.</p>
+        <span class="what">WHAT</span>
+        <p>On detecting Judge0 <code>status_id=6</code> (CE) during result processing, the worker immediately marks all remaining test results as CE with 0 points without making additional API calls. The compiler's stderr is extracted and sent to the candidate as the full error message. Session status moves to complete immediately.</p>
+        <span class="risk">RISK</span>
+        <p>In batch mode, all tests are dispatched simultaneously — you cannot cancel already-submitted Judge0 tokens. The CE halt prevents <em>processing</em> remaining results, not their execution. This is accepted and flagged as P3 in the pain points section.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">C4</div><div class="vf-step-name">Test case fetching is server-side only</div></div>
+      <div class="vf-body">
+        <span class="why">WHY</span>
+        <p>If hidden test case inputs or expected outputs ever reach the client — even in an API response field that's "not shown" in the UI — a determined candidate can inspect network traffic (Chrome DevTools, Wireshark) and use those inputs to craft solutions that pass without implementing the correct algorithm. The leakage doesn't need to be visible in the UI to be exploitable.</p>
+        <span class="what">WHAT</span>
+        <p>The grading worker fetches test cases directly from the DB/S3 within the internal network. The candidate-facing API serialisation layer must exclude <code>is_hidden=true</code> test cases entirely — not just their expected output, but the test entries themselves. The <code>is_sample</code> flag controls which tests are shown in Run mode results.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="slbl">B — Reliability &amp; resiliency considerations</div>
+
+  <div class="vflow">
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">R1</div><div class="vf-step-name">Idempotency guard prevents double-grading</div></div>
+      <div class="vf-body">
+        <span class="why">WHY</span>
+        <p>BullMQ uses at-least-once delivery semantics: if a worker crashes while processing a job, BullMQ retries the job. Without an idempotency check, the second execution writes duplicate <code>dsa_test_results</code> rows and the score aggregation sees 2× points for every test. The candidate gets a score above their max.</p>
+        <span class="what">WHAT</span>
+        <p>At the start of every job, the worker checks: <code>SELECT status FROM sessions WHERE id = $session_id</code>. If status is already <code>'grading'</code> or <code>'complete'</code>, the job exits immediately. The transition to <code>'grading'</code> must be atomic (UPDATE with WHERE clause checking prior state) to prevent two workers racing to start the same job.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">R2</div><div class="vf-step-name">Async pipeline decouples API from execution latency</div></div>
+      <div class="vf-body">
+        <span class="why">WHY</span>
+        <p>A DSA submission with 20 hidden test cases, each running a Python solution at 3× time multiplier with 2s base limit, could take up to 60 seconds in the worst case. No sane HTTP timeout allows 60 seconds. Beyond timeout, a long-lived HTTP connection blocks a thread, increases memory pressure, and is vulnerable to network disruption.</p>
+        <span class="what">WHAT</span>
+        <p>The API returns <code>202 Accepted</code> in under 50ms. The job is enqueued to BullMQ. The candidate's browser holds an SSE connection to receive progress updates as the worker processes each test. The HTTP request that triggered the grading is already closed by the time the first test result arrives.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">R3</div><div class="vf-step-name">Judge0 polling must have timeout + backoff</div></div>
+      <div class="vf-body">
+        <span class="why">WHY</span>
+        <p>Judge0 queues submissions internally. Under load, a submission may sit in queue for 1–3 seconds before execution begins. If the worker polls at fixed 400ms intervals and Judge0 is processing 200 concurrent submissions, it generates 500 polling requests per second — a self-inflicted DDoS on the execution cluster. Worse, if Judge0 goes down, the worker spins polling forever.</p>
+        <span class="what">WHAT</span>
+        <p>Exponential backoff: first poll at 400ms, then multiply by 1.5× each round, capped at 2000ms. Hard timeout at 30 seconds — after which the job fails and the candidate receives a system error. The backoff diagram below illustrates the polling curve.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">R4</div><div class="vf-step-name">Session state machine must be explicit</div></div>
+      <div class="vf-body">
+        <span class="why">WHY</span>
+        <p>Without an explicit state machine, every part of the codebase that touches a session must re-derive what states are valid. This leads to inconsistencies: e.g., the cleanup job marks sessions as expired while the worker is simultaneously marking them complete, or a candidate re-submits after grading because the front-end didn't receive the lock signal.</p>
+        <span class="what">WHAT</span>
+        <p>The <code>sessions.status</code> column is the single source of truth. The valid FSM is defined below. Any database write that changes status must specify the expected prior state in the WHERE clause (optimistic locking), so concurrent writes fail loudly rather than silently corrupting state.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FSM Diagram -->
+  <div class="slbl" style="margin-top:20px">Session state machine (FSM)</div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:20px;overflow-x:auto">
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:700px">
+      <div class="fsm-state">pending</div>
+      <div class="fsm-arrow">→</div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+        <div class="fsm-state active">active</div>
+        <div class="fsm-condition">timer starts</div>
+      </div>
+      <div class="fsm-arrow">→</div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+        <div class="fsm-state warn">submitted</div>
+        <div class="fsm-condition">editor locked</div>
+      </div>
+      <div class="fsm-arrow">→</div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+        <div class="fsm-state" style="background:rgba(26,110,245,.1);border-color:var(--blue);color:var(--blue)">grading</div>
+        <div class="fsm-condition">worker picks up</div>
+      </div>
+      <div class="fsm-arrow" style="font-size:24px;position:relative">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span>↗</span>
+            <div class="fsm-state terminal-ok">complete</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+            <span>↘</span>
+            <div class="fsm-state terminal-err">failed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+      <div class="fsm-arrow" style="font-size:20px">↙</div>
+      <div class="fsm-state terminal-err">expired</div>
+      <div class="fsm-condition">— applies to active sessions when timer runs out (concurrent path, not linear)</div>
+    </div>
+    <div class="callout info" style="margin-top:12px">
+      <span class="ci">ℹ</span>
+      <p><strong>Grading → complete must be an atomic transition.</strong> The worker sets status to <code>grading</code> BEFORE dispatching to Judge0. On completion, it writes all test results first, then atomically sets status to <code>complete</code>. This ordering ensures that if the worker crashes between writing results and updating status, the cleanup job can retry and the idempotency guard prevents duplicate result rows.</p>
+    </div>
+  </div>
+
+  <div class="slbl">C — Security considerations</div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--red)"></span>S1 — Judge0 CVE exposure</div>
+      <p>Judge0 ≤v1.13.0 has three critical CVEs (CVSS 9.1–10.0) enabling sandbox escape to root via symlink attacks and SSRF to internal PostgreSQL. The attack vector: a candidate submits code that exploits the isolate sandbox escape, gains access to the Judge0 host filesystem, and reads internal credentials from environment variables.</p>
+      <p>Patched in v1.13.1+, but the hardening checklist (network disabled, changed passwords, internal-only port, resource limits) is mandatory regardless of version. See Section 10 for the full checklist.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--red)"></span>S2 — Judge0 network isolation is non-negotiable</div>
+      <p>If a candidate's code can reach the network, it can exfiltrate hidden test case data (by calling back to a server they control), probe internal services (SSRF), or perform outbound attacks during an exam. <code>enable_network: false</code> must be set on every batch submission payload — not as a Judge0 default, but explicitly in every API call so a misconfiguration doesn't silently re-enable it.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--red)"></span>S3 — Hidden driver must never reach the client</div>
+      <p>If a candidate sees the hidden driver code, they can learn the exact input format and write a solution that hardcodes the expected output for each test case rather than implementing the algorithm. The driver is in <code>dsa_language_stubs.hidden_driver</code> and must be excluded from every API serialisation — not just the candidate endpoint but any admin endpoint that might be discovered.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--red)"></span>S4 — Code size and output limits must be enforced</div>
+      <p>A candidate can attempt to crash the grader by: (1) submitting a 10MB source file — exhausting API memory during parsing, (2) writing an infinite output loop — filling Judge0's stdout buffer and eventually causing OOM, (3) submitting a fork bomb — exhausting process table. All three vectors must be stopped before reaching Judge0: code size cap at the API layer (50KB), stdout cap in Judge0 config (1MB), process limit via cgroups.</p>
+    </div>
+  </div>
+
+  <div class="slbl">D — Fairness &amp; scoring considerations</div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--green)"></span>F1 — Language execution time differs — multipliers needed</div>
+      <p>The same algorithm implemented in Python vs C++ can differ by 3–5× in execution time on identical hardware. A flat 2-second time limit would systematically TLE every Python solution that would pass in C++. The <code>time_multiplier</code> column in <code>dsa_language_stubs</code> adjusts the per-language limit: <code>cpu_time_limit = base_limit × multiplier</code>. Python gets 3×, C++ gets 1×.</p>
+      <p>The table in Section 06 gives reference multipliers, but they must be empirically calibrated on the actual Judge0 deployment hardware before going live (Pain Point P2).</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--green)"></span>F2 — Subtask scoring prevents brute-force partial credit</div>
+      <p>A flat per-test scoring system allows a candidate to earn 80% by hardcoding answers for the small test cases and ignoring the actual algorithmic challenge. Subtask groups with <code>all_or_nothing</code> scoring block this: the "Full constraints" subtask requires every test in the group to pass, so an O(n²) solution that times out on the large inputs earns 0 for that group — not partial credit for the tests it happened to pass.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--green)"></span>F3 — Run mode must not affect final score</div>
+      <p>Run mode (the fast feedback loop for sample tests) runs synchronously and returns inline JSON. It must write zero score-related columns. The architectural separation is absolute: Run mode uses no BullMQ, no <code>sessions.final_score</code> write, no <code>dsa_test_results</code> insert. A candidate can click Run 100 times; it has no effect on their final score.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--green)"></span>F4 — Score must be locked at submission time</div>
+      <p>The source code snapshot must be immutable: captured in the <code>submissions</code> table at submit time and never modified. If a candidate finds a bug in their code after submission, they cannot change their submission retroactively. The editor's <code>readOnly: true</code> state must be set synchronously on the API's 202 response — not after grading completes — to prevent a race where the candidate edits code while grading is in progress.</p>
+    </div>
+  </div>
+
+  <div class="slbl">E — Operational considerations</div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--purple)"></span>O1 — Test case storage strategy (inline vs S3)</div>
+      <p>Storing all test cases inline in the DB avoids S3 round-trips at grading time. But a question with 20 hidden tests where each input is a 500-element integer array at ~2KB each = 40KB per question row. This is fine. But a question with 20 tests at 50KB each = 1MB per row — PostgreSQL TOAST threshold is 2KB, meaning 99% of that row lives in the TOAST table anyway. For large inputs (>1KB per test), S3 storage is mandatory with inline metadata only.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--purple)"></span>O2 — Batch dispatch vs per-test dispatch</div>
+      <p>Per-test dispatch: 20 sequential HTTP calls to Judge0, 20 sequential polling loops = 20× the latency overhead. Batch API: 1 HTTP call to submit all 20 tests simultaneously, 1 polling loop that checks all 20 tokens together. For 20 tests with 600ms average execution time, batch mode reduces grading time from ~15 seconds to ~3 seconds. The batch API is not optional — it is the only viable design at scale.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--purple)"></span>O3 — Orphaned session recovery</div>
+      <p>A worker crash after setting <code>status='grading'</code> but before writing results leaves the session permanently stuck. No SSE event ever fires. The candidate stares at a loading spinner indefinitely. A scheduled cleanup job every 5 minutes detects sessions stuck in <code>grading</code> for more than 5 minutes and re-enqueues the grading job. The worker's idempotency guard handles partial results correctly on retry.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--purple)"></span>O4 — Judge0 token audit trail</div>
+      <p>Every <code>dsa_test_results</code> row stores the Judge0 token that produced it. If a candidate disputes a verdict — "my solution was correct, the system is wrong" — the support team can use the token to re-fetch the full Judge0 result (stdout, stderr, actual time, memory) without re-running the code. This is the only forensic tool available after a grading run completes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 03 — PIPELINE WALKTHROUGH ═══════════════════════════ -->
+<section class="section page" id="pipeline">
+  <div class="sec-head">
+    <span class="sec-num">03 // PIPELINE WALKTHROUGH</span>
+    <h2 class="sec-title">From candidate click to score — every step explained</h2>
+  </div>
+  <p class="sec-desc">The DSA pipeline has two distinct modes that share infrastructure but diverge sharply in execution path, guarantees, and latency. Understanding why they are architecturally separate — not just operationally different — is essential to correctly implementing them.</p>
+
+  <div class="trio">
+    <div class="trio-item">
+      <div class="trio-label">WHY TWO MODES?</div>
+      <p>Candidates need fast feedback during development (Run) and authoritative grading at submit time (Submit). Merging these into one path forces a choice: either the developer loop is slow (30s per click), or the graded path doesn't have full test coverage. Two separate paths with explicit contracts solves this.</p>
+    </div>
+    <div class="trio-item">
+      <div class="trio-label">RUN MODE CONTRACT</div>
+      <p>Fast (under 10 seconds). Sample tests only. No BullMQ involvement. Synchronous response. No score writes. No DB writes to scoring columns. Result is ephemeral — lives only in the HTTP response.</p>
+    </div>
+    <div class="trio-item">
+      <div class="trio-label">SUBMIT MODE CONTRACT</div>
+      <p>Authoritative. All tests. Queued async. Score is permanent. SSE progress. Idempotent on retry. Source code snapshot is immutable. Session locked from further edits immediately on submission.</p>
+    </div>
+  </div>
+
+  <div class="slbl" style="margin-top:20px">Run mode — detailed step-by-step reasoning</div>
+  <div class="vflow">
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">RUN 01</div><div class="vf-step-name">Candidate clicks Run</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p><code>POST /sessions/{id}/run</code> with <code>source_code</code> + <code>judge0_language_id</code> in body.</p>
+        <span class="why">WHY</span><p>Session ID in the URL (not body) lets the API verify the session belongs to the authenticated candidate without parsing the body first. The language ID in the body allows different run attempts in different languages without creating a new session.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">RUN 02</div><div class="vf-step-name">API validation</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p>Check <code>session.status = 'active'</code>. Enforce code size cap (50KB). Enforce per-session rate limit (e.g., 10 runs/minute). No queue involved.</p>
+        <span class="why">WHY</span><p>If <code>status != 'active'</code>, the session is expired, submitted, or already grading — running code is meaningless. Size cap prevents memory exhaustion during parsing. Rate limit prevents the Run endpoint from being used to overwhelm Judge0 during concurrent exam windows.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">RUN 03</div><div class="vf-step-name">Fetch sample tests + Code Merge</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p><code>SELECT * FROM dsa_test_cases WHERE question_id = $q AND is_sample = TRUE</code>. Then merge candidate code with hidden driver per language strategy.</p>
+        <span class="why">WHY</span><p>Only sample tests — never hidden tests — are run in Run mode. Exposing hidden test execution in Run mode would let the candidate probe whether their specific outputs match the hidden expected outputs, effectively revealing the hidden test cases through a timing/boolean oracle.</p>
+        <span class="risk">RISK</span><p>The merged code is built in memory on the API server and sent directly to Judge0 — never written to disk, never logged with driver content visible.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">RUN 04–06</div><div class="vf-step-name">Dispatch → Poll → Compare</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p>Batch submit sample tests only. Poll every 400ms, max 10 attempts (8s timeout). Normalise and compare output server-side.</p>
+        <span class="why">WHY</span><p>Shorter polling timeout (8s vs 30s for Submit) is acceptable because sample tests have small inputs and should complete in under 2s. The inline response pattern requires a bounded wait — we can't stream partial results back in a synchronous HTTP response.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">RUN 07</div><div class="vf-step-name">Return inline JSON</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p>HTTP 200 with a JSON array: one verdict object per sample test. For WA, include actual vs expected diff (safe since these are sample tests, not hidden). <strong>No DB write to <code>final_score</code>.</strong></p>
+        <span class="why">WHY</span><p>Showing the diff on sample tests is intentional — the candidate needs feedback to improve. Showing it on hidden tests would expose confidential test data. The is_sample flag controls which category each test falls into.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="slbl" style="margin-top:24px">Submit mode — detailed step-by-step reasoning</div>
+  <div class="vflow">
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">SUB 01</div><div class="vf-step-name">Candidate submits</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p><code>POST /sessions/{id}/submit</code> with <code>source_code</code> + <code>judge0_language_id</code>.</p>
+        <span class="why">WHY</span><p>Same endpoint structure as Run but different path suffix. The submit path carries finality — it locks the session, creates an immutable record, and begins grading. Separating it from Run prevents an accidental run from triggering a graded submission.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">SUB 02</div><div class="vf-step-name">API persists + enqueues</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p>In a single transaction: <code>INSERT INTO submissions</code> (immutable snapshot). Enqueue BullMQ <code>DSA_GRADE</code> job with submission ID. Return 202 Accepted.</p>
+        <span class="why">WHY</span><p>Transaction ensures the submission row and the queue job are consistent — you can't have a job with no submission row (worker would fail to find data) or a submission row with no job (candidate waits forever). The BullMQ job payload contains only the submission ID, not the source code — the worker fetches from DB to ensure it's always working with the persisted, immutable snapshot.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">SUB 03</div><div class="vf-step-name">Lock session</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p><code>UPDATE sessions SET status='submitted', submitted_at=NOW() WHERE id=$id AND status='active'</code>. The front-end receives the 202 and immediately sets Monaco to <code>readOnly: true</code>.</p>
+        <span class="why">WHY</span><p>The WHERE clause on <code>status='active'</code> is an optimistic lock — if the session was already submitted by a concurrent duplicate request, this UPDATE silently affects 0 rows. The front-end's readOnly transition should happen on the 202 response, not after grading, because there's a window between submission and grading completion where the editor would be editable.</p>
+        <span class="risk">RISK</span><p>Network latency between the server setting submitted and the front-end receiving the response could allow an edit. The solution is to also check session status server-side on every Run request — if status is not 'active', reject the run.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">SUB 04</div><div class="vf-step-name">Worker picks up — idempotency + setup</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p>Worker dequeues job. Check session status: if <code>grading</code> or <code>complete</code>, exit (idempotency guard). Atomically set status to <code>'grading'</code>. Fetch question, language stub (starter_code + hidden_driver), and all test cases (inline + S3).</p>
+        <span class="why">WHY</span><p>Status must be set to <code>grading</code> <em>before</em> any Judge0 calls. If the worker dispatches to Judge0 and then crashes before setting the status, the orphaned session cleanup job will retry. But the session is still in <code>submitted</code> status — so the retry correctly re-dispatches. If status were set after dispatch, the cleanup job can't distinguish "crashed before dispatch" from "crashed after dispatch, results already in Judge0".</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">SUB 05</div><div class="vf-step-name">Code Merger</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p>Per-language strategy merge. Merged code lives only in worker memory. Never written to disk, never logged with driver visible, never returned to the API.</p>
+        <span class="why">WHY</span><p>The merged code contains the hidden driver. If it were logged, it would be in application logs accessible to developers, potentially violating question confidentiality. If written to disk, it persists after the job completes — a security liability. In-memory only means it lives for the duration of the job and is garbage collected immediately after.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">SUB 06</div><div class="vf-step-name">Judge0 batch dispatch</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p>Chunk test cases into batches of max 20 (P9). Submit each chunk. Receive token arrays. All payloads use: <code>expected_output: null</code>, <code>enable_network: false</code>, <code>cpu_time_limit = base × multiplier</code>.</p>
+        <span class="why">WHY</span><p>Batch size limit exists in Judge0 deployments (typically 20–50 depending on config). Chunking is defensive programming — a question might have 30 tests. Setting <code>expected_output: null</code> opts out of Judge0's built-in comparison, forcing the worker to do its own (correct) normalised comparison. <code>enable_network: false</code> is explicitly set per call, not assumed from Judge0 defaults.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">SUB 07</div><div class="vf-step-name">Poll + parse all verdicts</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p>Exponential backoff polling across all token chunks. On each poll cycle, check for CE (halt all immediately). For completed tokens, normalise output and compare. Classify each into one of 8 verdicts.</p>
+        <span class="why">WHY</span><p>Polling, not webhooks, because Judge0's open-source deployment doesn't support outbound webhooks. The exponential backoff is to avoid polling thrashing under load. Checking for CE on every poll cycle (not just the first) handles the race condition where CE arrives on a later poll after other tests have completed normally.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">SUB 08</div><div class="vf-step-name">Score + SSE + write</div></div>
+      <div class="vf-body">
+        <span class="what">WHAT</span><p>Compute subtask group scores. Idempotent upsert to <code>dsa_test_results</code> per test. Write final score and breakdown to <code>sessions</code>. Set status to <code>'complete'</code>. Publish <code>GRADING_COMPLETE</code> event to Redis pub/sub → SSE handler → candidate browser.</p>
+        <span class="why">WHY</span><p>Write order matters: test results first, then session status + final score. This ordering means that if the worker crashes between writing test results and updating the session, a retry can skip already-written test results (idempotency check per row) and still correctly complete the session update. The reverse order (session first) would produce a complete session with missing test result rows.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warn" style="margin-top:16px">
+    <span class="ci">⚠</span>
+    <p><strong>The single most important ordering invariant in the entire pipeline:</strong> status → <code>grading</code> BEFORE Judge0 dispatch. Results written BEFORE status → <code>complete</code>. These two orderings make the pipeline safe under crash + retry at any point.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 04 — SCHEMA ═══════════════════════════ -->
+<section class="section page" id="schema">
+  <div class="sec-head">
+    <span class="sec-num">04 // SCHEMA</span>
+    <h2 class="sec-title">Database schema — design decisions behind every column</h2>
+  </div>
+  <p class="sec-desc">The schema is not just a data model — it encodes invariants, access patterns, and business rules. Every column choice has a reason. This section explains not just what the schema is, but why each design decision was made.</p>
+
+  <div class="insight">
+    <div class="insight-head">Read domain vs. write domain separation</div>
+    <p>The evaluation module reads from tables owned by the question authoring module (<code>questions</code>, <code>dsa_language_stubs</code>, <code>dsa_test_cases</code>, <code>dsa_subtasks</code>) and writes exclusively to its own tables (<code>sessions</code>, <code>submissions</code>, <code>dsa_test_results</code>). This is a deliberate boundary: the evaluation module cannot modify a question's test cases, cannot alter time limits, and cannot change the expected output. It only records what happened when it ran the code. This separation prevents subtle bugs where a grading operation inadvertently modifies the source of truth it's supposed to evaluate against.</p>
+  </div>
+
+  <div class="slbl">READ — from question authoring module</div>
+  <div class="schema"><span class="cc">-- Evaluation reads these but never writes them</span>
+<span class="tn">dsa_language_stubs</span>   <span class="cc">-- starter_code (served to candidate) + hidden_driver (merged server-side)</span>
+<span class="tn">dsa_test_cases</span>       <span class="cc">-- input/output (inline or S3), is_sample flag, subtask_id, assigned_points</span>
+<span class="tn">dsa_subtasks</span>         <span class="cc">-- group_points, scoring_policy (per_test | all_or_nothing)</span>
+<span class="tn">questions</span>            <span class="cc">-- cpu_time_limit_sec, memory_limit_mb, stack_limit_mb, execution_engine</span></div>
+
+  <div class="slbl" style="margin-top:20px">WRITE — owned by evaluation module</div>
+  <div class="schema"><span class="tn">sessions</span> {
+  <span class="cn">id</span>               <span class="ct">UUID PRIMARY KEY</span>        <span class="cc">-- not SERIAL: avoids enumerable IDs</span>
+  <span class="cn">candidate_id</span>     <span class="ct">INT NOT NULL</span>
+  <span class="cn">question_id</span>      <span class="ct">INT NOT NULL REFERENCES questions(id)</span>
+  <span class="cn">language_stub_id</span> <span class="ct">INT REFERENCES dsa_language_stubs(id)</span>
+  <span class="cn">status</span>           <span class="ct">VARCHAR(20)</span>  <span class="cc">-- pending|active|submitted|grading|complete|expired</span>
+  <span class="cn">started_at</span>       <span class="ct">TIMESTAMPTZ</span>
+  <span class="cn">expires_at</span>       <span class="ct">TIMESTAMPTZ</span>
+  <span class="cn">submitted_at</span>     <span class="ct">TIMESTAMPTZ</span>
+  <span class="cn">final_score</span>      <span class="ct">INT</span>          <span class="cc">-- NULL until grading complete</span>
+  <span class="cn">max_score</span>        <span class="ct">INT</span>
+  <span class="cn">score_breakdown</span>  <span class="ct">JSONB</span>        <span class="cc">-- {test_id: {verdict, points, time_ms}}</span>
+}
+
+<span class="tn">submissions</span> {
+  <span class="cn">id</span>               <span class="ct">SERIAL <span class="pk">PK</span></span>
+  <span class="cn">session_id</span>       <span class="ct">UUID NOT NULL REFERENCES sessions(id)</span>
+  <span class="cn">attempt_number</span>   <span class="ct">INT NOT NULL DEFAULT 1</span>
+  <span class="cn">submission_type</span>  <span class="ct">VARCHAR(20)</span>  <span class="cc">-- 'DSA' always here</span>
+  <span class="cn">source_code</span>      <span class="ct">TEXT NOT NULL</span> <span class="cc">-- immutable snapshot at submit time</span>
+  <span class="cn">judge0_lang_id</span>   <span class="ct">INT NOT NULL</span>
+  <span class="cn">submitted_at</span>     <span class="ct">TIMESTAMPTZ DEFAULT NOW()</span>
+  UNIQUE (session_id, attempt_number)  <span class="cc">-- idempotency key for worker</span>
+}
+
+<span class="tn">dsa_test_results</span> {
+  <span class="cn">id</span>               <span class="ct">SERIAL <span class="pk">PK</span></span>
+  <span class="cn">session_id</span>       <span class="ct">UUID NOT NULL REFERENCES sessions(id)</span>
+  <span class="cn">test_case_id</span>     <span class="ct">INT NOT NULL REFERENCES dsa_test_cases(id)</span>
+  <span class="cn">judge0_token</span>     <span class="ct">VARCHAR(100)</span> <span class="cc">-- audit trail for replay/debug</span>
+  <span class="cn">verdict</span>          <span class="ct">VARCHAR(5) NOT NULL</span>  <span class="cc">-- AC|WA|TLE|MLE|RE|CE|OLE|PE</span>
+  <span class="cn">stdout_actual</span>    <span class="ct">TEXT</span>         <span class="cc">-- stored for sample tests (diff display)</span>
+  <span class="cn">stderr</span>           <span class="ct">TEXT</span>         <span class="cc">-- compiler errors, runtime exceptions</span>
+  <span class="cn">time_ms</span>          <span class="ct">INT</span>
+  <span class="cn">memory_kb</span>        <span class="ct">INT</span>
+  <span class="cn">points_awarded</span>   <span class="ct">INT NOT NULL DEFAULT 0</span>
+}</div>
+
+  <div class="g2" style="margin-top:20px">
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--amber)"></span>Why UUID for sessions.id?</div>
+      <p>A SERIAL integer ID is enumerable — a candidate can guess adjacent session IDs (e.g., their session is 10042, they try 10041 and 10043). A UUID is 128-bit random — not guessable. This prevents a class of IDOR (Insecure Direct Object Reference) vulnerabilities where a candidate fetches another candidate's results by incrementing the ID.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--amber)"></span>Why score_breakdown JSONB on sessions?</div>
+      <p>The authoritative per-test scores live in <code>dsa_test_results.points_awarded</code>. The JSONB snapshot on sessions is a denormalisation for read speed. The score card UI needs all test verdicts, points, and timing on page load. Without the JSONB, every score card render requires a JOIN across potentially 20+ test result rows — for a concurrent exam with 500 candidates, that's 10,000 row reads at page load time. The JSONB is written once at grading completion and read many times.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--amber)"></span>Why store stdout_actual only for sample tests?</div>
+      <p>Storing the actual stdout for hidden tests would be equivalent to revealing what the candidate's code produced on those inputs. Combined with the expected output, this would leak the hidden test data progressively. For sample tests, storing actual output is fine (the input is public) and necessary to show the diff in the UI when a candidate's answer is wrong.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--amber)"></span>Why is source_code in submissions (not sessions)?</div>
+      <p>Keeping source code in a separate <code>submissions</code> table with a UNIQUE(session_id, attempt_number) constraint serves two purposes: (1) idempotency — the UNIQUE constraint prevents duplicate rows on worker retry; (2) potential multi-attempt support — future extensions could allow re-submission (with scoring logic taking the best attempt). Embedding source_code directly in sessions would make either of these harder to reason about.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 05 — CODE MERGER ═══════════════════════════ -->
+<section class="section page" id="merger">
+  <div class="sec-head">
+    <span class="sec-num">05 // CODE MERGER</span>
+    <h2 class="sec-title">Per-language merge strategies — why a simple concat fails</h2>
+  </div>
+  <p class="sec-desc">The Code Merger is the most language-sensitive component in the pipeline. It has one job: combine the candidate's solution with the hidden driver into a single runnable program. But "combine" means something different in every language. This section explains the structural reason for each merge strategy.</p>
+
+  <div class="insight">
+    <div class="insight-head">The fundamental problem: language file structure is not uniform</div>
+    <p>In Python, a file is a sequence of top-level statements and definitions — you can append anything after the class and it executes in order. In C++, the preprocessor must process <code>#include</code> directives before the compiler sees the rest of the file — you cannot have includes after function definitions. In Java, a file can have multiple class definitions but only one public class — and they must be in a specific order for some compilers. In JavaScript (Node), module exports and globals have different semantics depending on whether you're in CommonJS or ESM mode.</p>
+    <p><strong>A string concatenation that works for Python silently breaks every other language.</strong></p>
+  </div>
+
+  <div class="slbl">Per-language strategy rationale</div>
+  <div class="vflow">
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">PY</div><div class="vf-step-name">Python — append strategy</div></div>
+      <div class="vf-body">
+        <span class="why">WHY APPEND WORKS</span>
+        <p>Python files are executed top-to-bottom. A class definition before line 10 is in scope for code at line 50. Appending the driver after the Solution class works because by the time the driver code runs, the class is already defined in the module's local scope. There are no include/import ordering constraints.</p>
+        <span class="risk">EDGE CASE</span>
+        <p>If the candidate adds <code>if __name__ == "__main__":</code> in their starter code (trying to test locally), it will conflict with the driver's entry point. The merger should check for this pattern and strip it from candidate code before appending.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">C++</div><div class="vf-step-name">C++ — inject strategy (prepend + append)</div></div>
+      <div class="vf-body">
+        <span class="why">WHY INJECT IS REQUIRED</span>
+        <p>C++ compilation is a two-phase process: the preprocessor first resolves <code>#include</code> directives (which expand to entire header files), then the compiler sees the resulting translation unit. If you append <code>#include &lt;bits/stdc++.h&gt;</code> after the Solution class, the preprocessor processes it after the class definition, but the standard library types used in the class were never declared. Result: compilation fails with "vector undeclared".</p>
+        <p>The driver must PREPEND includes and APPEND the <code>main()</code> function. The candidate's code sits in the middle with access to all headers defined above it.</p>
+        <span class="risk">EDGE CASE</span>
+        <p>If the candidate puts their own includes in the starter code (which they may do locally), they may conflict with the driver's includes (duplicate symbol errors). The merger strategy for C++ should either strip known-duplicate includes or use an include guard convention.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">Java</div><div class="vf-step-name">Java — same-class strategy</div></div>
+      <div class="vf-body">
+        <span class="why">WHY A SEPARATE CLASS IS NEEDED</span>
+        <p>Java's entry point must be a <code>static void main</code> method, but it can be in any class — it doesn't have to be in the <code>Solution</code> class. The driver adds a separate <code>Main</code> class with the <code>main</code> method. This is possible because Java allows multiple class definitions in a single file, as long as only one is public. The candidate's <code>Solution</code> class (not public) and the driver's <code>Main</code> class (not public, but contains main) coexist in the same file.</p>
+        <span class="risk">EDGE CASE</span>
+        <p>If the candidate declares their class as <code>public class Solution</code>, and the file isn't named Solution.java, some Java compilers reject it. The merger must either rename the file or ensure the class declaration doesn't have the <code>public</code> modifier.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">JS</div><div class="vf-step-name">JavaScript (Node) — module strategy</div></div>
+      <div class="vf-body">
+        <span class="why">WHY MODULE APPROACH</span>
+        <p>Node.js files execute top-to-bottom. A function defined at the top level is available to code defined later. The driver appended below the candidate's function has access to <code>twoSum</code> because it's in the same module scope. The driver uses <code>require('fs').readFileSync('/dev/stdin')</code> to read all stdin at once, which is more reliable than async readline for competitive programming I/O patterns.</p>
+        <span class="risk">EDGE CASE</span>
+        <p>If the candidate uses ES Module syntax (<code>import</code>/<code>export</code>) instead of CommonJS, the driver's <code>require()</code> call will fail. The merger should detect ES module syntax and either reject it or wrap it appropriately.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warn" style="margin-top:16px">
+    <span class="ci">⚠</span>
+    <p><strong>The merger strategy map is a required data structure, not an implementation detail.</strong> Build it as <code>&#123; language_id: MergeStrategy &#125;</code> where each strategy implements <code>merge(starterCode, hiddenDriver): string</code>. A missing strategy must throw an explicit error. When a new language is added, a new strategy must be registered before that language can be enabled for a question. The admin panel should validate that all enabled languages for a question have a registered strategy before publication.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 06 — EXECUTION ═══════════════════════════ -->
+<section class="section page" id="execution">
+  <div class="sec-head">
+    <span class="sec-num">06 // EXECUTION</span>
+    <h2 class="sec-title">Judge0 dispatch, polling, and resource limits — the mechanics</h2>
+  </div>
+  <p class="sec-desc">This section covers the exact Judge0 API contract — why each field in the batch payload is set the way it is, how resource limits are calculated with language multipliers, and the mathematical reasoning behind the exponential backoff polling design.</p>
+
+  <div class="slbl">Why each batch payload field is set the way it is</div>
+  <div class="vflow">
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">source_code</div><div class="vf-step-name">Base64 encoded</div></div>
+      <div class="vf-body">
+        <span class="why">WHY</span><p>The Judge0 API transmits source code as JSON. JSON strings cannot contain raw null bytes, certain control characters, or arbitrary binary sequences. Base64 encoding ensures the source code (which may contain string literals with any character) is safely representable as a JSON string. This is a requirement of the Judge0 API, not an optional optimisation.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">expected_output</div><div class="vf-step-name">Always null</div></div>
+      <div class="vf-body">
+        <span class="why">WHY NULL</span><p>If you set <code>expected_output</code>, Judge0 performs a raw byte comparison between actual stdout and expected. This fails for: trailing whitespace on any line, Windows <code>\r\n</code> from Java on Windows, float outputs that differ only after the 6th decimal place, case differences when the problem is case-insensitive. The worker does its own normalised comparison. Setting <code>expected_output: null</code> tells Judge0 to not compare — it just returns the stdout and we compare ourselves.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">enable_network</div><div class="vf-step-name">Always false</div></div>
+      <div class="vf-body">
+        <span class="why">WHY EXPLICITLY FALSE</span><p>This is set explicitly per call, not assumed from Judge0 server defaults. If the Judge0 deployment has a misconfigured default (<code>ALLOW_ENABLE_NETWORK=true</code>), explicit <code>false</code> in the payload overrides it. Defense in depth: we don't trust server defaults to protect us. A candidate with network access could exfiltrate test data via outbound HTTP to a server they control.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">cpu_time_limit</div><div class="vf-step-name">base × language multiplier</div></div>
+      <div class="vf-body">
+        <span class="why">WHY MULTIPLY</span><p>Judge0 measures CPU time, not wall time. CPU time for Python is typically 3–5× higher than C++ for the same algorithm because CPython has a much higher constant factor per operation. Without a multiplier, every Python solution that would pass in C++ times out — this is a systematic fairness violation. The multiplier corrects for interpreter/JVM/runtime overhead, making the effective difficulty equivalent across languages.</p>
+        <span class="risk">CALIBRATION REQUIRED</span><p>The multipliers (Python 3.0×, Node 2.5×, Java 1.5×) are estimates. They must be empirically calibrated on the actual Judge0 deployment hardware before going live. See Pain Point P2.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">redirect_stderr_to_stdout</div><div class="vf-step-name">Always false</div></div>
+      <div class="vf-body">
+        <span class="why">WHY KEEP SEPARATE</span><p>Judge0 returns both stdout and stderr separately. Merging them (redirect_stderr_to_stdout=true) would pollute the stdout comparison — a debug print statement going to stderr would accidentally appear in the comparison output, causing spurious WA verdicts. Keeping them separate means we compare stdout only, and stderr is available for debugging (RE messages, CE output).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="slbl" style="margin-top:20px">Language time multiplier reference</div>
+  <table>
+    <thead><tr><th>Language</th><th>Judge0 ID</th><th>Time Multiplier</th><th>Rationale</th><th>Wall Time Risk</th></tr></thead>
+    <tbody>
+      <tr><td>C++ 17</td><td>54</td><td>1.0×</td><td>Baseline — compiled, fastest. Minimal runtime overhead.</td><td>Low</td></tr>
+      <tr><td>Rust</td><td>73</td><td>1.0×</td><td>Compiled, comparable to C++. Zero-cost abstractions.</td><td>Low</td></tr>
+      <tr><td>Go</td><td>60</td><td>1.2×</td><td>Compiled, very fast — slight multiplier for GC pauses.</td><td>Low</td></tr>
+      <tr><td>Java</td><td>62</td><td>1.5×</td><td>JVM startup adds ~200–400ms. JIT compilation overhead on first run.</td><td>Medium — JVM startup adds wall time</td></tr>
+      <tr><td>C# (.NET)</td><td>51</td><td>1.5×</td><td>JIT compiled, similar to Java. .NET runtime startup.</td><td>Medium</td></tr>
+      <tr><td>JavaScript (Node)</td><td>63</td><td>2.5×</td><td>V8 JIT — faster than Python but lacks compile-time type optimization.</td><td>Low — fast startup</td></tr>
+      <tr><td>TypeScript</td><td>74</td><td>2.5×</td><td>Transpiled to JS — same V8 runtime characteristics as Node.</td><td>Low — transpilation is pre-execution</td></tr>
+      <tr><td>Python 3</td><td>71</td><td>3.0×</td><td>CPython interpreter — no JIT, high per-operation overhead vs compiled.</td><td>Low — but GIL can cause issues with threading tests</td></tr>
+    </tbody>
+  </table>
+
+  <div class="slbl" style="margin-top:20px">Exponential backoff polling — the math</div>
+  <div class="insight">
+    <div class="insight-head">Why exponential backoff? Why these specific numbers?</div>
+    <p>The goal is to detect completion as quickly as possible (minimise latency) while not overwhelming Judge0 with polling requests (minimise load). A fixed interval of 400ms is a reasonable starting point for quick tests, but under load, a fixed interval means N workers × constant request rate = linear load growth. Exponential backoff keeps early polls fast but spreads out later polls, reducing load during congested periods.</p>
+    <p><strong>400ms initial delay:</strong> Fast tests (simple arrays, basic loops) finish in 100–300ms. Polling before 400ms guarantees a miss and wastes a request. Starting at 400ms catches fast tests on the first or second poll.</p>
+    <p><strong>1.5× multiplier:</strong> Gentler than 2× — the sequence is 400, 600, 900, 1350, 2000 (capped). The cap at 2000ms ensures we never wait more than 2 seconds between polls even for very slow tests.</p>
+    <p><strong>30 second hard timeout:</strong> The longest legitimate execution is base_limit × max_multiplier = 5s × 3.0 = 15s. Adding Judge0 queue time (typically 1–3s under normal load) gives a realistic worst case of ~18s. 30s provides a safety margin while ensuring orphaned jobs eventually fail rather than blocking the worker forever.</p>
+  </div>
+
+  <div class="backoff">
+    <div style="writing-mode:vertical-rl;text-transform:rotate(180deg);color:rgba(255,255,255,.3);font-family:var(--mono);font-size:9px;margin-right:8px">DELAY (ms)</div>
+    <div class="backoff-bar"><div class="bb-bar" style="height:24px"></div><div class="bb-label">400ms<br/>poll 1</div></div>
+    <div class="backoff-bar"><div class="bb-bar" style="height:36px"></div><div class="bb-label">600ms<br/>poll 2</div></div>
+    <div class="backoff-bar"><div class="bb-bar" style="height:54px"></div><div class="bb-label">900ms<br/>poll 3</div></div>
+    <div class="backoff-bar"><div class="bb-bar" style="height:81px"></div><div class="bb-label">1350ms<br/>poll 4</div></div>
+    <div class="backoff-bar"><div class="bb-bar" style="height:100px;background:rgba(217,119,6,.6)"></div><div class="bb-label">2000ms<br/>poll 5+<br/>(capped)</div></div>
+    <div class="backoff-bar"><div class="bb-bar" style="height:100px;opacity:.4;background:rgba(217,119,6,.6)"></div><div class="bb-label">2000ms<br/>poll 6+</div></div>
+    <div class="backoff-bar"><div class="bb-bar" style="height:100px;opacity:.4;background:rgba(217,119,6,.6)"></div><div class="bb-label">…</div></div>
+    <div class="backoff-bar"><div class="bb-bar" style="height:100px;opacity:.2;background:rgba(232,56,13,.7)"></div><div class="bb-label">30s total<br/>timeout</div></div>
+  </div>
+
+  <div class="callout note">
+    <span class="ci">⚡</span>
+    <p><strong>Wall time vs CPU time:</strong> Judge0 enforces both. CPU time limit (from the multiplier calculation) limits total processor time the process consumes. Wall time limit (set separately in Judge0 config, typically 2× CPU limit) catches <code>sleep()</code>-based evasion — a candidate who writes an infinite loop disguised as <code>time.sleep(0.001)</code> would pass the CPU time check but fail the wall time check.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 07 — SCORING ═══════════════════════════ -->
+<section class="section page" id="scoring">
+  <div class="sec-head">
+    <span class="sec-num">07 // SCORING</span>
+    <h2 class="sec-title">Subtask scoring + output normalisation — the complete design</h2>
+  </div>
+  <p class="sec-desc">Two components drive scoring: the subtask group evaluator (decides how many points each test group awards) and the output normalisation chain (decides whether a test's output is correct). Both are deterministic and must produce identical results on retry.</p>
+
+  <div class="slbl">Why two scoring policies?</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--green)"></span>per_test — awards points for each passing test independently</div>
+      <p>Used for sample/basic constraint subtasks. A candidate gets credit for every test they pass, even if they don't pass all of them. This provides granular partial credit on the easy cases and gives good feedback: "you passed 2 of 3 basic tests".</p>
+      <p><strong>When to use:</strong> Subtask 0 (n ≤ 10, brute force acceptable). Any subtask where partial progress is meaningful and should be rewarded.</p>
+      <p><strong>Brute-force risk:</strong> A candidate can write O(n²) or even O(2^n) code and still pass all per_test cases if the inputs are small enough. This is intentional for Subtask 0 — we want to reward correct algorithm logic even if it's not optimal.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--amber)"></span>all_or_nothing — awards group points only if every test in the group passes</div>
+      <p>Used for high-constraint subtasks that test algorithmic complexity. If a single test in the group fails (WA, TLE, RE, MLE), the entire group awards 0 points. This forces the candidate to have a correct AND efficient solution.</p>
+      <p><strong>When to use:</strong> Subtask 1 (n ≤ 1,000), Subtask 2 (n ≤ 100,000). Any subtask where a partial solution getting partial credit would misrepresent the candidate's algorithmic ability.</p>
+      <p><strong>Key property:</strong> A solution that barely passes 90% of the hidden tests (gets lucky on 9/10) gets 0 points for the group — not 90%. This is correct — the solution is not reliably correct.</p>
+    </div>
+  </div>
+
+  <!-- Scoring tree -->
+  <div class="slbl" style="margin-top:20px">Subtask structure example — Two Sum (100 points total)</div>
+  <div class="score-tree">
+    <div class="st-root">
+      <div class="arch-node blue" style="min-width:200px">
+        <div class="arch-node-label">Two Sum — 100 pts total</div>
+        <div class="arch-node-sub">3 subtasks · 15 tests</div>
+      </div>
+      <div class="st-connector"></div>
+      <div style="display:flex;gap:32px;justify-content:center">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+          <div class="st-connector" style="height:20px"></div>
+          <div class="st-node per-test">
+            <div class="st-node-title">Subtask 0 — 15pts</div>
+            <div class="st-node-sub">per_test · n ≤ 10<br/>3 sample tests, 5pts each</div>
+          </div>
+          <div class="st-connector"></div>
+          <div style="display:flex;gap:6px">
+            <div class="st-node test-pass"><div class="st-node-title" style="font-size:9px">T1 ✓</div></div>
+            <div class="st-node test-pass"><div class="st-node-title" style="font-size:9px">T2 ✓</div></div>
+            <div class="st-node test-fail"><div class="st-node-title" style="font-size:9px">T3 ✗</div></div>
+          </div>
+          <div class="st-node-sub" style="color:rgba(255,255,255,.6);margin-top:8px;font-size:9.5px">Score: 10 / 15 pts</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+          <div class="st-connector" style="height:20px"></div>
+          <div class="st-node all-or-nothing">
+            <div class="st-node-title">Subtask 1 — 35pts</div>
+            <div class="st-node-sub">all_or_nothing · n ≤ 1K<br/>5 hidden tests</div>
+          </div>
+          <div class="st-connector"></div>
+          <div style="display:flex;gap:6px">
+            <div class="st-node test-pass"><div class="st-node-title" style="font-size:9px">T4 ✓</div></div>
+            <div class="st-node test-pass"><div class="st-node-title" style="font-size:9px">T5 ✓</div></div>
+            <div class="st-node test-fail"><div class="st-node-title" style="font-size:9px">T6 TLE</div></div>
+            <div class="st-node test-pass"><div class="st-node-title" style="font-size:9px">T7 ✓</div></div>
+            <div class="st-node test-pass"><div class="st-node-title" style="font-size:9px">T8 ✓</div></div>
+          </div>
+          <div class="st-node-sub" style="color:rgba(232,56,13,.8);margin-top:8px;font-size:9.5px">Score: 0 / 35 pts (all_or_nothing: 1 TLE fails group)</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+          <div class="st-connector" style="height:20px"></div>
+          <div class="st-node all-or-nothing">
+            <div class="st-node-title">Subtask 2 — 50pts</div>
+            <div class="st-node-sub">all_or_nothing · n ≤ 100K<br/>7 hidden tests</div>
+          </div>
+          <div class="st-connector"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+            <div class="st-node test-pass"><div class="st-node-title" style="font-size:9px">T9–T15 ✓</div></div>
+          </div>
+          <div class="st-node-sub" style="color:rgba(0,168,107,.8);margin-top:8px;font-size:9.5px">Score: 50 / 50 pts (all pass)</div>
+        </div>
+      </div>
+      <div style="color:rgba(255,255,255,.6);font-family:var(--mono);font-size:11px;margin-top:16px;text-align:center">Final score: 10 + 0 + 50 = <strong style="color:rgba(255,255,255,.9)">60 / 100</strong></div>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="ci">ℹ</span>
+    <p><strong>Reading this example:</strong> The candidate passed Subtask 0 (partial per_test = 10pts). Failed Subtask 1 because one test TLEd — the all_or_nothing policy gives them 0 for the group, even though they passed 4 of 5 tests. Passed Subtask 2 completely (50pts). Total: 60pts. This scoring correctly distinguishes an O(n) hash-map solution (would pass all three subtasks) from an O(n²) solution (would fail Subtask 1's large inputs).</p>
+  </div>
+
+  <div class="slbl" style="margin-top:24px">Output normalisation chain — every step explained</div>
+  <div class="norm-chain">
+    <div class="nc-step">
+      <div class="nc-num">1</div>
+      <div class="nc-body">
+        <div class="nc-title">Normalize Windows line endings → Unix</div>
+        <div class="nc-why">Java on Windows, certain text editors, and some online IDEs emit <code>\r\n</code> (CRLF) instead of <code>\n</code> (LF). A raw string comparison would fail between a correct Java solution and expected output stored with LF endings. This must be the first step so subsequent operations work on a consistent line separator.</div>
+        <div class="nc-example">Before: "2 3\r\n5 7\r\n" → After: "2 3\n5 7\n"</div>
+      </div>
+    </div>
+    <div class="nc-step">
+      <div class="nc-num">2</div>
+      <div class="nc-body">
+        <div class="nc-title">Strip outer whitespace (trim)</div>
+        <div class="nc-why">Most programming languages' print functions add a trailing newline. Python's <code>print()</code> always adds <code>\n</code>. Java's <code>System.out.println()</code> always adds <code>\n</code>. The expected output stored in the DB may or may not have a trailing newline depending on how the problem author entered it. Stripping outer whitespace from both sides makes the comparison blind to this inconsistency.</div>
+        <div class="nc-example">Before: "  42\n  " → After: "42"</div>
+      </div>
+    </div>
+    <div class="nc-step">
+      <div class="nc-num">3</div>
+      <div class="nc-body">
+        <div class="nc-title">Strip trailing whitespace per line</div>
+        <div class="nc-why">Some print functions add a trailing space after each number (e.g., <code>cout &lt;&lt; x &lt;&lt; " "</code> in a loop that doesn't have a special case for the last element). This is semantically correct output but fails a raw comparison against expected output without trailing spaces. Trimming each line's right side makes comparison robust to trailing spaces — a candidate shouldn't be penalised for adding a trailing space after their last output element.</div>
+        <div class="nc-example">Before: "1 2 3 \n4 5 6 " → After: "1 2 3\n4 5 6"</div>
+      </div>
+    </div>
+    <div class="nc-step">
+      <div class="nc-num">4</div>
+      <div class="nc-body">
+        <div class="nc-title">Collapse excessive blank lines (3+ → max 1)</div>
+        <div class="nc-why">Some solutions emit extra blank lines between outputs when iterating over test cases or printing debug information. Collapsing 3+ consecutive blank lines to 1 prevents spurious failures when the problem author's expected output has a slightly different blank line count. A single blank line as a separator between output groups is legitimate and preserved.</div>
+        <div class="nc-example">Before: "3\n\n\n\n7" → After: "3\n\n7"</div>
+      </div>
+    </div>
+    <div class="nc-step">
+      <div class="nc-num">5</div>
+      <div class="nc-body">
+        <div class="nc-title">Optional: case-insensitive comparison</div>
+        <div class="nc-why">Some problems ask for outputs like "YES"/"NO" or "True"/"False" where case convention differs by language (Python's <code>True</code> vs JavaScript's <code>true</code> vs Java's <code>"true"</code>). The <code>case_insensitive</code> flag on the question config allows the problem author to mark the problem as case-insensitive. Applied only when explicitly enabled — not as a default — to avoid masking real case errors in string output problems.</div>
+        <div class="nc-example">With flag: "True" === "true" === "TRUE" → all compare as equal</div>
+      </div>
+    </div>
+    <div class="nc-step">
+      <div class="nc-num">6</div>
+      <div class="nc-body">
+        <div class="nc-title">Float epsilon comparison (when output_type = 'float')</div>
+        <div class="nc-why">Floating-point arithmetic is not exact. A correct geometric algorithm may produce 0.999999999 for a result that should be exactly 1.0, due to accumulation of IEEE 754 rounding errors. A string comparison would fail. The epsilon comparison: <code>|actual - expected| &lt; ε</code>. Default ε = 1e-6, but configurable per question (geometry problems may need 1e-9, approximate algorithms may accept 1e-4). See Pain Point P8 for the missing per-question epsilon config.</div>
+        <div class="nc-example">|0.999999 - 1.0| = 1e-6 &lt; ε → PASS (for ε = 1e-5)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 08 — VERDICTS ═══════════════════════════ -->
+<section class="section page" id="verdicts">
+  <div class="sec-head">
+    <span class="sec-num">08 // VERDICTS</span>
+    <h2 class="sec-title">8 verdicts — complete decision logic and candidate impact</h2>
+  </div>
+  <p class="sec-desc">Every Judge0 status maps to exactly one verdict in our system. Every verdict has a defined worker action, a halt decision, a candidate message, and a UI behaviour. Incomplete handling of any verdict leaves the session permanently stuck in <code>grading</code> state.</p>
+
+  <div class="insight">
+    <div class="insight-head">The fundamental verdict classification</div>
+    <p>Verdicts split into three categories by their operational implications: <strong>Continue verdicts</strong> (AC, WA, RE, MLE, OLE, PE) — the worker processes the next test. <strong>Halt verdict</strong> (CE) — all remaining tests are immediately marked CE, the session closes. <strong>Subtask-halt verdict</strong> (TLE) — remaining tests in the same subtask are marked TLE (they can't pass since the solution is already too slow for this constraint level), but tests in other subtasks continue.</p>
+  </div>
+
+  <table>
+    <thead><tr><th>Verdict</th><th>Judge0 Status</th><th>Points</th><th>Worker Action</th><th>Halt?</th><th>What the candidate sees</th><th>Root cause</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="v v-ac">✓ AC</span></td>
+        <td style="font-family:var(--mono);font-size:11px">3</td>
+        <td>Full assigned_points</td>
+        <td>Award points. Continue to next test.</td>
+        <td>No</td>
+        <td>Passed ✓ · time_ms shown</td>
+        <td>Output matches expected after normalisation</td>
+      </tr>
+      <tr>
+        <td><span class="v v-wa">✗ WA</span></td>
+        <td style="font-family:var(--mono);font-size:11px">4 (custom)</td>
+        <td>0</td>
+        <td>Record verdict. For sample tests: store actual vs expected for diff. For hidden tests: verdict only — never expose expected output. Continue.</td>
+        <td>No</td>
+        <td>Wrong Answer. On samples: diff shown. On hidden: verdict only.</td>
+        <td>Judge0 returned status 3 (OK) but output didn't match after normalisation. Our custom verdict — Judge0 doesn't emit WA directly.</td>
+      </tr>
+      <tr>
+        <td><span class="v v-tle">⏱ TLE</span></td>
+        <td style="font-family:var(--mono);font-size:11px">5</td>
+        <td>0</td>
+        <td>Mark this test 0. Mark all remaining tests in the same subtask as TLE (they can't pass — solution is provably too slow for this constraint). Continue other subtasks.</td>
+        <td>Subtask only</td>
+        <td>Time Limit Exceeded (N sec). Hint to optimise algorithm.</td>
+        <td>Solution's time complexity is too high for the input size. With multipliers applied, this is a fair signal.</td>
+      </tr>
+      <tr>
+        <td><span class="v v-ce">⊘ CE</span></td>
+        <td style="font-family:var(--mono);font-size:11px">6</td>
+        <td>0 — all tests</td>
+        <td><strong>Halt ALL remaining tests immediately.</strong> Extract compiler stderr. Mark session complete with 0 points. Emit GRADING_COMPLETE with stderr payload.</td>
+        <td><strong>Yes — global</strong></td>
+        <td>Compilation Failed. Full compiler error shown in terminal output.</td>
+        <td>Syntax error, missing imports, type mismatch — code cannot run.</td>
+      </tr>
+      <tr>
+        <td><span class="v v-re">↯ RE</span></td>
+        <td style="font-family:var(--mono);font-size:11px">11</td>
+        <td>0</td>
+        <td>Record stderr (null pointer, array OOB, stack overflow, assertion fail). Continue other tests — RE on one test doesn't imply RE on all.</td>
+        <td>No</td>
+        <td>Runtime Error. Check stderr for exception type.</td>
+        <td>Program crashed. Common: null deref, index out of bounds, division by zero, uncaught exception.</td>
+      </tr>
+      <tr>
+        <td><span class="v v-mle">▣ MLE</span></td>
+        <td style="font-family:var(--mono);font-size:11px">12</td>
+        <td>0</td>
+        <td>Record peak memory used. Continue. MLE on large inputs often coexists with AC on small inputs.</td>
+        <td>No</td>
+        <td>Memory Limit Exceeded (N KB used). Check for memory leaks or unnecessarily large data structures.</td>
+        <td>Program allocated more memory than the configured limit. Common: storing all input in a list that should be streamed.</td>
+      </tr>
+      <tr>
+        <td><span class="v v-ole">⊡ OLE</span></td>
+        <td style="font-family:var(--mono);font-size:11px">14</td>
+        <td>0</td>
+        <td>Record. Continue. OLE is usually caused by an infinite loop that prints, not infinite execution (which would be TLE).</td>
+        <td>No</td>
+        <td>Output Limit Exceeded (>1MB). Check for infinite output loops.</td>
+        <td>Stdout exceeded Judge0's MAX_FILE_SIZE. Common: print inside an infinite loop.</td>
+      </tr>
+      <tr>
+        <td><span class="v v-pe">≈ PE</span></td>
+        <td style="font-family:var(--mono);font-size:11px">custom</td>
+        <td>0</td>
+        <td>Triggered when normalised comparison fails but semantic meaning is correct (e.g., "1 2 3" vs "1\n2\n3"). Show diff hint. Continue.</td>
+        <td>No</td>
+        <td>Presentation Error. Output is logically correct but formatted differently. Check spacing/newlines/separators.</td>
+        <td>Custom verdict — not from Judge0. The worker detects this when the output differs only in whitespace after minimal normalisation but would match with aggressive whitespace collapse.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn" style="margin-top:12px">
+    <span class="ci">⚠</span>
+    <p><strong>WA on hidden tests must NEVER expose expected output.</strong> This is a data masking requirement enforced in the worker, not a UI decision. Even if the UI doesn't display it, if the expected output is in the API response payload, a candidate can inspect network traffic. The worker must write <code>stdout_actual = null</code> for hidden test WA verdicts — only the verdict label is returned.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 09 — REAL-TIME ═══════════════════════════ -->
+<section class="section page" id="realtime">
+  <div class="sec-head">
+    <span class="sec-num">09 // REAL-TIME FEEDBACK</span>
+    <h2 class="sec-title">SSE architecture — why SSE, how it works, and what can go wrong</h2>
+  </div>
+  <p class="sec-desc">The real-time feedback system bridges the async grading pipeline and the candidate's browser. Understanding the full SSE lifecycle — including failure modes — is essential because a broken SSE path leaves the candidate staring at a spinner with no way to know their score is ready.</p>
+
+  <div class="trio">
+    <div class="trio-item">
+      <div class="trio-label">WHY SSE OVER WEBSOCKET?</div>
+      <p>SSE is unidirectional server-to-client. The candidate never needs to send messages after submission — they only receive updates. WebSocket is bidirectional (full-duplex), which is unnecessary overhead. SSE is simpler to implement, has native browser support via <code>EventSource</code>, works over HTTP/2 multiplexing, and automatically retries broken connections. WebSocket requires a separate upgrade handshake and doesn't auto-retry.</p>
+    </div>
+    <div class="trio-item">
+      <div class="trio-label">WHY SSE OVER POLLING?</div>
+      <p>Client polling (candidate's browser calls GET /sessions/{id} every second) would require N candidates × N requests/second = O(N²) load on the API as exam size grows. SSE is a single long-lived connection per candidate. The server pushes updates only when they're ready — zero unnecessary requests. For 500 concurrent candidates, SSE is 500 persistent connections vs potentially 30,000+ polling requests per minute.</p>
+    </div>
+    <div class="trio-item">
+      <div class="trio-label">HOW THE WORKER TALKS TO SSE</div>
+      <p>The grading worker and the SSE HTTP handler are different processes. They communicate via Redis pub/sub. The worker publishes events to a channel keyed by session ID (<code>session:{id}</code>). The SSE handler (running in the API server) is subscribed to that channel and forwards events to the browser connection. Redis pub/sub is the decoupling layer.</p>
+    </div>
+  </div>
+
+  <!-- SSE lifecycle diagram -->
+  <div class="slbl" style="margin-top:20px">SSE connection lifecycle — the correct sequence</div>
+  <div style="background:var(--ink);border-radius:8px;padding:24px;margin:14px 0;overflow-x:auto">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;min-width:500px">
+      <div class="sse-actor">
+        <div class="sse-actor-head client">CANDIDATE BROWSER</div>
+        <div class="sse-events">
+          <div class="sse-event">1. Open SSE connection to<br/>/sessions/{id}/events</div>
+          <div class="sse-event" style="opacity:.5">( waiting... )</div>
+          <div class="sse-event">2. POST /sessions/{id}/submit</div>
+          <div class="sse-event" style="opacity:.5">( receive 202 immediately )</div>
+          <div class="sse-event" style="opacity:.5">( receive GRADING_PROGRESS events... )</div>
+          <div class="sse-event out">5. Render score card on<br/>GRADING_COMPLETE</div>
+          <div class="sse-event out">6. Close SSE connection</div>
+        </div>
+      </div>
+      <div class="sse-actor" style="border-left:1px solid rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.06)">
+        <div class="sse-actor-head server">API SERVER</div>
+        <div class="sse-events">
+          <div class="sse-event">Holds open SSE connection</div>
+          <div class="sse-event">Receives submit POST</div>
+          <div class="sse-event">Writes submission row +<br/>enqueues BullMQ job</div>
+          <div class="sse-event">Returns 202 Accepted</div>
+          <div class="sse-event">Subscribes to Redis<br/>channel: session:{id}</div>
+          <div class="sse-event">Forwards events from<br/>Redis → SSE → browser</div>
+        </div>
+      </div>
+      <div class="sse-actor">
+        <div class="sse-actor-head worker">GRADING WORKER</div>
+        <div class="sse-events">
+          <div class="sse-event" style="opacity:.4">( waiting for job... )</div>
+          <div class="sse-event">Dequeues DSA_GRADE job</div>
+          <div class="sse-event">Runs full grading pipeline</div>
+          <div class="sse-event">3. Publish GRADING_PROGRESS<br/>per test to Redis channel</div>
+          <div class="sse-event">4. Publish GRADING_COMPLETE<br/>to Redis channel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warn" style="margin-top:4px">
+    <span class="ci">⚠</span>
+    <p><strong>Critical ordering: SSE connection must be opened BEFORE the submit call.</strong> If the submit resolves and the worker completes grading before the SSE connection is established, the GRADING_COMPLETE event is emitted to an empty channel — no subscriber — and the candidate never receives it. On the front-end: open the EventSource connection first, then call the submit POST. The submit may complete in milliseconds if the worker picks it up instantly.</p>
+  </div>
+
+  <div class="slbl" style="margin-top:20px">Missed event recovery — what happens when the connection drops</div>
+  <div class="vflow">
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">MISS 01</div><div class="vf-step-name">Network drops during grading</div></div>
+      <div class="vf-body">
+        <span class="risk">SCENARIO</span><p>The candidate submits. Grading begins. After 5 seconds (midway through grading), the candidate's network connection drops for 10 seconds. GRADING_COMPLETE fires during the outage. When the network recovers, the browser's EventSource reconnects — but the event is gone (Redis pub/sub is fire-and-forget).</p>
+        <span class="what">FIX</span><p>On SSE reconnect, the client must first call <code>GET /sessions/{id}</code>. If the response contains <code>status: 'complete'</code>, render the score card from the REST response body — don't wait for SSE. The REST response includes the same data as the GRADING_COMPLETE event payload.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">MISS 02</div><div class="vf-step-name">Network drops, grading still in progress</div></div>
+      <div class="vf-body">
+        <span class="risk">SCENARIO</span><p>Same as above, but the network drops and recovers before grading completes. The session status is still <code>grading</code>.</p>
+        <span class="what">FIX</span><p>On SSE reconnect: call GET /sessions/{id}. Status is <code>grading</code> — reopen the SSE connection and wait. But: the worker must be able to re-emit GRADING_PROGRESS events for already-completed tests on reconnect. This requires storing completed test verdicts in Redis (keyed by session) so the SSE handler can replay them to a reconnecting client. This is flagged as Pain Point P7.</p>
+      </div>
+    </div>
+    <div class="vf-item">
+      <div class="vf-step"><div class="vf-step-num">MISS 03</div><div class="vf-step-name">Candidate closes tab then reopens</div></div>
+      <div class="vf-body">
+        <span class="risk">SCENARIO</span><p>Candidate submits, closes the browser tab, and reopens it 30 seconds later (after grading is complete).</p>
+        <span class="what">FIX</span><p>On page load, the front-end fetches <code>GET /sessions/{id}</code>. If <code>status = 'complete'</code>, render the score card immediately from the REST response. Never depend on SSE alone for the final score — the REST endpoint is the persistent source of truth. SSE is just the fast-path for real-time updates during the grading window.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:16px">
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--blue)"></span>SSE event types and their payloads</div>
+      <p><strong>GRADING_PROGRESS</strong> — fired by worker after each test completes. Payload: <code>&#123;test_index, verdict, time_ms, memory_kb, is_sample&#125;</code>. For hidden tests, <code>is_sample: false</code> tells the UI not to show expected/actual diff even if it's requested.</p>
+      <p><strong>GRADING_COMPLETE</strong> — fired once when all tests are processed. Payload: <code>&#123;final_score, max_score, verdict_summary, subtask_breakdown&#125;</code>. This is the same data the GET /sessions/{id} REST endpoint returns.</p>
+      <p><strong>GRADING_ERROR</strong> — fired on system failure (worker crash, Judge0 timeout). Payload: <code>&#123;message&#125;</code>. Only tells the candidate to contact support — no internal details. The worker crash is logged with full context server-side.</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--blue)"></span>Redis pub/sub as the SSE bridge</div>
+      <p>The grading worker runs in a separate process from the API server. They share Redis. The worker publishes to a channel keyed by session ID: <code>PUBLISH session:{uuid} &#123;event_json&#125;</code>.</p>
+      <p>The API's SSE endpoint subscribes to that channel when the candidate connects: <code>SUBSCRIBE session:{uuid}</code>. When a message arrives on the channel, the API forwards it to the candidate's EventSource stream.</p>
+      <p>This pattern means the API server holds one Redis subscription per active grading session. At 500 concurrent candidates, that's 500 Redis subscriptions — negligible overhead. The worker never needs to know about HTTP connections or SSE protocol.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 10 — SECURITY ═══════════════════════════ -->
+<section class="section page" id="security">
+  <div class="sec-head">
+    <span class="sec-num">10 // SECURITY</span>
+    <h2 class="sec-title">Judge0 hardening — threat model and defence layers</h2>
+  </div>
+  <p class="sec-desc">The security design is not just a checklist — it is a threat model with layers. Understanding what each control protects against makes the checklist actionable and helps detect gaps.</p>
+
+  <div class="insight">
+    <div class="insight-head">The attack surface: what a motivated candidate can attempt</div>
+    <p><strong>1. Sandbox escape:</strong> Submit code that exploits a Judge0 CVE to gain access to the host filesystem. Target: other candidates' submissions, Judge0's internal database credentials, system environment variables.</p>
+    <p><strong>2. SSRF (Server-Side Request Forgery):</strong> Submit code that makes outbound HTTP calls from inside the sandbox. Target: internal metadata services (AWS IMDS at 169.254.169.254), internal PostgreSQL, Redis, or other services on the private VPC.</p>
+    <p><strong>3. Test case oracle:</strong> Submit code that makes outbound calls with test inputs/outputs embedded in the request. Target: reverse-engineering hidden test cases by probing system responses.</p>
+    <p><strong>4. Resource exhaustion:</strong> Cause Judge0 or the host to run out of memory, CPU, or disk. Target: disrupting other candidates' grading during a concurrent exam.</p>
+    <p><strong>5. Information leakage via API:</strong> Access API responses or network traffic that contains hidden test cases, expected outputs, or hidden driver code.</p>
+  </div>
+
+  <!-- Security rings diagram -->
+  <div class="slbl">Defence-in-depth: three isolation rings</div>
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:24px;margin:16px 0;align-items:start">
+    <div style="position:relative;width:320px;height:320px;flex-shrink:0">
+      <div class="ring-outer" style="width:100%;height:100%;transform:translate(-50%,-50%)">
+        <div class="ring-outer-lbl" style="top:10px">Ring 1 — Public Internet</div>
+      </div>
+      <div class="ring-mid" style="transform:translate(-50%,-50%)">
+        <div class="ring-mid-lbl" style="top:10px">Ring 2 — Internal VPC</div>
+      </div>
+      <div class="ring-inner" style="transform:translate(-50%,-50%)">
+        <div class="ring-inner-lbl" style="top:10px">Ring 3 — Worker Network</div>
+      </div>
+      <div class="ring-core" style="transform:translate(-50%,-50%)">
+        <div class="ring-label" style="color:rgba(0,168,107,.9);font-size:9px">isolate<br/>sandbox</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card">
+        <div class="card-head"><span class="dot" style="background:var(--red)"></span>Ring 1 — Public Internet → API Gateway</div>
+        <p>The only public entry point is the API Gateway on port 443 (HTTPS). Rate limiting, auth token validation, and request size limits apply here. Judge0's port 2358 is never reachable from the public internet — it binds to <code>127.0.0.1</code> only.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="dot" style="background:var(--amber)"></span>Ring 2 — Internal VPC → Grading Worker only reaches Judge0</div>
+        <p>Within the VPC, the grading worker can reach Judge0. But Judge0 cannot initiate outbound connections — it's a passive API server. The candidate's code inside Judge0 cannot reach the VPC network because <code>enable_network: false</code> disables the container's network namespace entirely.</p>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="dot" style="background:var(--green)"></span>Ring 3 — isolate sandbox (per submission)</div>
+        <p>Judge0 uses the <code>isolate</code> library which creates a separate Linux namespace per submission: separate PID namespace (no <code>kill</code> to other processes), separate network namespace (no outbound connections), separate filesystem namespace, cgroup limits on CPU and memory. Each submission is a hermetically sealed environment destroyed immediately after execution completes.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:20px">
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--red)"></span>judge0.conf mandatory hardening settings</div>
+      <div style="background:#111118;border-radius:4px;padding:14px;font-family:var(--mono);font-size:11px;line-height:1.8;color:#ddd8ce;margin-top:8px">
+        <span style="color:#4a5568"># Kills the SSRF CVE vector (ALLOW_ENABLE_NETWORK=false</span><br>
+        <span style="color:#f97316">ALLOW_ENABLE_NETWORK</span>=false<br><br>
+        <span style="color:#4a5568"># Change defaults — defaults are public knowledge</span><br>
+        <span style="color:#f97316">POSTGRES_PASSWORD</span>=&lt;strong-secret&gt;<br>
+        <span style="color:#f97316">REDIS_PASSWORD</span>=&lt;another-secret&gt;<br><br>
+        <span style="color:#4a5568"># Never expose to public internet</span><br>
+        <span style="color:#f97316">JUDGE0_API_BIND</span>=127.0.0.1:2358<br><br>
+        <span style="color:#4a5568"># Hard execution limits</span><br>
+        <span style="color:#f97316">CPU_TIME_LIMIT</span>=5      <span style="color:#4a5568"># seconds — base limit</span><br>
+        <span style="color:#f97316">WALL_TIME_LIMIT</span>=10    <span style="color:#4a5568"># prevents sleep() evasion</span><br>
+        <span style="color:#f97316">MEMORY_LIMIT</span>=131072   <span style="color:#4a5568"># 128MB in KB</span><br>
+        <span style="color:#f97316">MAX_FILE_SIZE</span>=1024    <span style="color:#4a5568"># 1MB stdout cap</span><br>
+        <span style="color:#f97316">MAX_QUEUE_SIZE</span>=100    <span style="color:#4a5568"># rate limit per IP</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="dot" style="background:var(--red)"></span>Why each hardening setting exists</div>
+      <p><strong>ALLOW_ENABLE_NETWORK=false:</strong> Even if a bug in our code passes <code>enable_network: true</code> in a payload, this server-side setting overrides it — defence in depth.</p>
+      <p><strong>WALL_TIME_LIMIT:</strong> A candidate can write <code>while True: time.sleep(0.001)</code> — this uses almost zero CPU but runs forever in wall time. Without wall time limit, this submission would never exit.</p>
+      <p><strong>MAX_FILE_SIZE (stdout cap):</strong> A candidate writing an infinite print loop would fill disk indefinitely if Judge0 didn't cap stdout. At 1MB, even a fast printer can't exceed this before the wall time limit kicks in.</p>
+      <p><strong>Changed passwords:</strong> Judge0's default PostgreSQL and Redis passwords are documented publicly. Any internal network attacker (or escaped sandbox) could connect to these services using the default credentials if they're not changed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 11 — PAIN POINTS ═══════════════════════════ -->
+<section class="section page" id="painpoints">
+  <div class="sec-head">
+    <span class="sec-num">11 // OPEN PAIN POINTS</span>
+    <h2 class="sec-title">What still needs thinking — deep analysis of each gap</h2>
+  </div>
+  <p class="sec-desc">These are the areas where the design is incomplete, has unresolved trade-offs, or requires explicit decisions before implementation. Each pain point includes the root cause, the failure mode if ignored, and the resolution path. Severity: <span class="tag t-red">Critical</span> blocks the build, <span class="tag t-amber">High</span> blocks production, <span class="tag t-blue">Medium</span> can defer to iteration 2.</p>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-red">CRITICAL</span> &nbsp; P1 — Driver correctness is entirely the author's responsibility</div>
+    <p><strong>Root cause:</strong> The hidden driver for each language is manually authored and stored in <code>dsa_language_stubs.hidden_driver</code>. There is no automated testing, no validation gate, and no feedback loop between authoring and grading correctness.</p>
+    <p><strong>Failure mode:</strong> A bug in the Python driver's input parsing (e.g., reading a space-separated integer list as a single string instead of parsing it) causes every Python submission for that question to get WA, regardless of how correct the candidate's algorithm is. The candidate has no way to distinguish "my code is wrong" from "the platform is broken". The author has no way to detect this until complaints arrive.</p>
+    <p><strong>Resolution:</strong></p>
+    <ul>
+      <li>Build a driver validation tool in the admin panel: author enters a known-correct reference solution, runs it through the full merge + dispatch cycle for each enabled language, verifies AC on all sample tests.</li>
+      <li>Gate the question's <code>PUBLISHED</code> status: requires at least one successful reference run per enabled language. No publication without validation.</li>
+      <li>The reference solution + expected output is stored, enabling regression testing if the driver is later modified.</li>
+    </ul>
+  </div>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-red">CRITICAL</span> &nbsp; P2 — Time multiplier values are not empirically calibrated</div>
+    <p><strong>Root cause:</strong> The multipliers (Python 3.0×, Node 2.5×, Java 1.5×) are reasonable estimates based on general knowledge, not measurements on the specific Judge0 deployment.</p>
+    <p><strong>Failure mode:</strong> On ARM hardware (where Python's gap over C++ is smaller), Python 3.0× is too lenient, accepting O(n²) solutions that should TLE. On slow shared instances, Java 1.5× is too tight, causing TLE for correct O(n log n) solutions due to JVM startup overhead. Both are systematic fairness violations affecting an entire language's candidates.</p>
+    <p><strong>Resolution:</strong></p>
+    <ul>
+      <li>Before go-live: run a benchmark suite (5–10 standard algorithms: sorting, BFS, DP, string matching, binary search) in every supported language against the actual Judge0 cluster.</li>
+      <li>Measure execution times at P50, P95, P99 across 20 runs each.</li>
+      <li>Set multipliers to the P95 ratio relative to the C++ baseline: if Python P95 is 4.2× C++ P95, set Python multiplier to 4.2.</li>
+      <li>Make multipliers configurable per-deployment via environment variable, not hardcoded per question.</li>
+    </ul>
+  </div>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-red">CRITICAL</span> &nbsp; P3 — CE halt has a race condition in batch mode</div>
+    <p><strong>Root cause:</strong> The CE halt logic was designed for sequential dispatch (detect CE on test 1, don't dispatch test 2). But the design uses batch dispatch — all tests are submitted simultaneously before any results arrive.</p>
+    <p><strong>Failure mode:</strong> All 20 tests execute in Judge0 even when the code has a compile error. 19 Judge0 execution slots are consumed unnecessarily. Under load, this delays other candidates' submissions. The slots are wasted but the verdict is still correct — all 20 return CE.</p>
+    <p><strong>Resolution (short-term):</strong> Accept the wasted slots. On detecting CE in any result during polling, immediately mark all remaining results as CE and close the session. Do not wait for the other tokens to complete.</p>
+    <p><strong>Resolution (long-term):</strong> Implement a pre-compile step — submit a compilation-only token (no stdin, no test input) first, wait for it, and only proceed to full batch dispatch if it returns status 3 (OK, code compiled successfully). This adds ~500ms to the happy path but eliminates 100% of wasted batch slots on CE.</p>
+  </div>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-amber">HIGH</span> &nbsp; P4 — Orphaned session recovery is not fully designed</div>
+    <p><strong>Root cause:</strong> The cleanup job is mentioned but its exact behaviour is unspecified. Specifically: what to do with partial results (some <code>dsa_test_results</code> rows may already exist), how many retries before giving up, and what state to set on permanent failure.</p>
+    <p><strong>Failure mode:</strong> A worker crashes after writing 10 of 20 test results. The cleanup job retries. But the retry doesn't know to skip the 10 already-written results — it may double-insert them, corrupting the score. Or it may overwrite them with correct values if the idempotency check is per-row. Without a clear spec, the retry logic is likely implemented incorrectly on the first attempt.</p>
+    <p><strong>Resolution:</strong></p>
+    <ul>
+      <li>Per-row idempotency: before inserting a <code>dsa_test_results</code> row, check <code>WHERE session_id=$s AND test_case_id=$t</code> — skip if already exists.</li>
+      <li>After 3 retries (configured), set session status to <code>'failed'</code> and publish GRADING_ERROR to the SSE channel.</li>
+      <li>The cleanup job query: <code>SELECT id FROM sessions WHERE status='grading' AND updated_at &lt; NOW() - INTERVAL '5 minutes'</code>. Enqueue a retry job for each found session.</li>
+    </ul>
+  </div>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-amber">HIGH</span> &nbsp; P5 — Large test case S3 latency adds to grading time</div>
+    <p><strong>Root cause:</strong> No caching strategy is defined for test case content. Every grading run for a question with S3-stored test cases makes N sequential S3 GET requests.</p>
+    <p><strong>Failure mode:</strong> For a question with 20 S3 test cases, each at ~50KB, a cold start adds 20 × 40ms (S3 GET latency in same region) = 800ms before any Judge0 dispatch begins. During a peak exam window where 100 candidates all submit the same question simultaneously, this creates 2,000 S3 GETs in a few seconds — a potential S3 rate limit event.</p>
+    <p><strong>Resolution:</strong> Prefetch and cache all test case content for a question on first access. Cache key: <code>tc:{question_id}:{test_index}</code> in Redis with 5-minute TTL. Subsequent submissions for the same question in the same exam window hit Redis instead of S3.</p>
+  </div>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-amber">HIGH</span> &nbsp; P6 — No plagiarism or code similarity detection</div>
+    <p><strong>Root cause:</strong> No mechanism exists to detect two candidates submitting identical or near-identical code.</p>
+    <p><strong>Failure mode:</strong> Two candidates share solutions — both score full marks. In a competitive exam context, this is a hiring integrity issue. Without detection, it goes unnoticed.</p>
+    <p><strong>Resolution:</strong> At grading time, compute a normalised hash of the submitted source code (strip comments, normalise whitespace, lowercase) and store on the submission row. After grading, a background job queries for other sessions on the same question with a matching hash. Matches are flagged for recruiter review — not automatically penalised, since independent solutions can legitimately be similar for simple problems. For deeper analysis, consider MOSS (Measure Of Software Similarity) as a deferred phase.</p>
+  </div>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-amber">HIGH</span> &nbsp; P7 — SSE missed-event scenario not fully handled</div>
+    <p><strong>Root cause:</strong> Redis pub/sub is fire-and-forget. If no subscriber is listening when a GRADING_COMPLETE event is published, the event is permanently lost. The design mentions a REST fallback but the exact client reconciliation logic is not specified.</p>
+    <p><strong>Failure mode:</strong> A candidate's network drops for 5 seconds during grading. GRADING_COMPLETE fires during the outage. Network recovers. Browser reconnects SSE. No event is ever delivered. The candidate sees a loading spinner indefinitely, score is actually in the DB. Likely perception: "the system is broken", candidate reports to support.</p>
+    <p><strong>Resolution:</strong></p>
+    <ul>
+      <li>On SSE reconnect, client MUST call <code>GET /sessions/{id}</code> first. If status is 'complete', render score card from REST response immediately.</li>
+      <li>If status is 'grading', reopen SSE and wait. Worker must store completed test verdicts in Redis per session (as a sorted list, keyed by test index), so the SSE handler can emit replay events for already-completed tests to a reconnecting client.</li>
+      <li>Redis key for replay: <code>grading_progress:{session_id}</code> — a sorted set of completed test verdicts, with TTL of 10 minutes after grading completes.</li>
+    </ul>
+  </div>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-blue">MEDIUM</span> &nbsp; P8 — Float output comparison epsilon is not configurable per-question</div>
+    <p><strong>Root cause:</strong> The normalisation chain uses a hardcoded <code>1e-6</code> epsilon for float comparison. No per-question configuration exists.</p>
+    <p><strong>Failure mode:</strong> A geometry problem requiring 1e-9 precision (computing pi, Euclidean distance on large coordinates) incorrectly marks solutions as AC that have accumulated floating-point errors larger than 1e-6. A Monte Carlo approximation problem correctly uses 1e-4 precision but gets WA with a 1e-6 epsilon.</p>
+    <p><strong>Resolution:</strong> Add <code>float_epsilon NUMERIC</code> and <code>output_type VARCHAR</code> (float | integer | string | multiline) columns to the <code>questions</code> table. The normalisation function reads these from question config at grading time. Default: 1e-6 for float, exact string match for all others.</p>
+  </div>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-blue">MEDIUM</span> &nbsp; P9 — Judge0 batch size limit not accounted for</div>
+    <p><strong>Root cause:</strong> Judge0's batch API has an undocumented but real limit on submissions per batch call (typically 20–50 depending on deployment configuration). A question with 30 test cases submitted in a single batch call may fail silently — Judge0 may return a 400 error or truncate the batch.</p>
+    <p><strong>Failure mode:</strong> Silent failure — grading appears to start but only 20 of 30 tests are dispatched. The worker polls for 30 tokens but only 20 exist in Judge0. The missing 10 are never accounted for. Session may get stuck in grading or produce an incorrect partial score.</p>
+    <p><strong>Resolution:</strong> Chunk test cases into batches of max 20 (configurable via environment variable <code>JUDGE0_BATCH_SIZE</code>). Poll each chunk independently using its token array. Merge all results before scoring. Chunking should be transparent to the scoring logic — it still receives a flat array of 30 test results.</p>
+  </div>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-blue">MEDIUM</span> &nbsp; P10 — No run-mode rate limiting per candidate</div>
+    <p><strong>Root cause:</strong> The Run mode endpoint has no per-session rate limit defined in the current design.</p>
+    <p><strong>Failure mode:</strong> A candidate (or automated tool running in the background) hammers the Run button continuously, saturating Judge0's queue and delaying other candidates' Run and Submit grading. In a competitive exam with 500 candidates, one abuser can degrade the entire exam experience.</p>
+    <p><strong>Resolution:</strong> Per-session rate limit of 10 runs/minute. Return 429 with <code>Retry-After</code> header when exceeded. Implement a 500ms debounce on the front-end Run button to prevent accidental rapid-fire clicks. Rate limit key: <code>rate:run:{session_id}</code> in Redis with 1-minute sliding window.</p>
+  </div>
+
+  <div class="pain">
+    <div class="pain-title"><span class="tag t-blue">MEDIUM</span> &nbsp; P11 — No observability defined for the grading pipeline</div>
+    <p><strong>Root cause:</strong> No metrics, alerting, or tracing specification exists. The grading pipeline runs as a black box.</p>
+    <p><strong>Failure mode:</strong> Judge0 goes down. Worker queue depth grows to 1000 jobs. Candidates submit and get no feedback. No alert fires. The incident is discovered when enough candidates email support — 20 minutes later. At that point, 1000 grading jobs are stale and need reprocessing.</p>
+    <p><strong>Resolution:</strong></p>
+    <ul>
+      <li>Prometheus metrics: queue depth (gauge), grading latency p50/p95/p99 (histogram), verdict distribution (counter), Judge0 error rate (counter).</li>
+      <li>Alerts: queue depth > 50 for more than 2 minutes; grading latency p95 > 30s; error rate > 5% over 5 minutes.</li>
+      <li>Structured logging: every worker log line must include <code>session_id</code>, <code>question_id</code>, <code>judge0_token</code>, and <code>verdict</code> for full trace reconstruction without a dedicated tracing system.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 12 — BUILD PHASES ═══════════════════════════ -->
+<section class="section page" id="phases">
+  <div class="sec-head">
+    <span class="sec-num">12 // BUILD PHASES</span>
+    <h2 class="sec-title">Recommended build sequence — why this order</h2>
+  </div>
+  <p class="sec-desc">The build sequence is designed so that each phase produces a testable deliverable and unblocks the next phase. The ordering follows the dependency graph: you can't test the worker without Judge0 running; you can't test SSE without the worker emitting events; you can't calibrate multipliers without the full grading loop working.</p>
+
+  <div class="callout info" style="margin-bottom:16px">
+    <span class="ci">ℹ</span>
+    <p><strong>Why not build everything in parallel?</strong> Schema changes made after the worker is built require worker code changes. A worker built before the Code Merger is tested will have untested language handling. SSE built before the worker emits events has no source of events to verify against. The phased sequence prevents rework by ensuring each dependency is validated before the next layer is built on top of it.</p>
+  </div>
+
+  <div class="phases">
+    <div class="phase-row">
+      <div class="ph-l"><div class="ph-num">PHASE 01</div><div class="ph-name">Schema + Judge0 setup</div></div>
+      <div class="ph-body">
+        <p><strong>What:</strong> Deploy Judge0 v1.13.1+ with all hardening flags applied. Create evaluation schema: <code>sessions</code>, <code>submissions</code>, <code>dsa_test_results</code>. Verify Judge0 responds correctly to a manual batch submit for Python, Java, C++.</p>
+        <p><strong>Why first:</strong> Everything else depends on Judge0 being reachable and the schema existing. A schema migration discovered mid-development of the worker requires rebuilding the worker's data layer. Do the schema first so it's stable.</p>
+        <ul style="margin-top:6px">
+          <li>Deliverable: Judge0 cluster running internally with hardened config. Schema migrated. Manual curl test passes for all languages.</li>
+          <li>Pain points addressed: S1, S2 (security baseline established).</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="ph-l"><div class="ph-num">PHASE 02</div><div class="ph-name">Code Merger</div></div>
+      <div class="ph-body">
+        <p><strong>What:</strong> Build the per-language strategy map. Implement and unit-test merger strategies for Python, Java, C++, JavaScript. Build a driver validation tool for the admin panel that runs a reference solution through the full merge + dispatch cycle.</p>
+        <p><strong>Why second:</strong> The merger is the most testable component in isolation — it's a pure function of (starterCode, hiddenDriver) → mergedCode. Test it standalone before integrating it into the worker. This ensures language bugs are caught before they're buried inside a larger async system.</p>
+        <ul style="margin-top:6px">
+          <li>Deliverable: Merger tested for all target languages. Admin can validate drivers before publishing. Unit test suite covers all 4 language strategies and edge cases.</li>
+          <li>Pain point addressed: P1 (driver correctness — validation tool built).</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="ph-l"><div class="ph-num">PHASE 03</div><div class="ph-name">Grading worker (Submit mode)</div></div>
+      <div class="ph-body">
+        <p><strong>What:</strong> Build the BullMQ grading worker: idempotency guard, fetch test cases, Code Merger invocation, batch dispatch with chunking, exponential backoff polling, 8-verdict handler including CE halt, output normalisation, subtask scoring, idempotent DB writes. No SSE yet — verify correctness via DB inspection.</p>
+        <p><strong>Why third:</strong> The worker is the core of the pipeline. Verify it produces correct DB results before adding the SSE layer. An SSE bug and a worker bug at the same time are much harder to debug than either alone. Isolate the worker correctness verification to DB state only.</p>
+        <ul style="margin-top:6px">
+          <li>Deliverable: End-to-end grading works for all 8 verdicts. Scores correct in DB. Verified by direct DB query after manual submission.</li>
+          <li>Pain points addressed: P3 (CE halt), P4 (idempotency guard), P9 (batch chunking).</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="ph-l"><div class="ph-num">PHASE 04</div><div class="ph-name">Run mode + SSE</div></div>
+      <div class="ph-body">
+        <p><strong>What:</strong> Add the synchronous Run endpoint (sample tests only, no queue, inline response). Add SSE endpoint and Redis pub/sub bridge. Wire the worker to emit GRADING_PROGRESS and GRADING_COMPLETE events. Implement the client-side SSE fallback to REST on reconnect.</p>
+        <p><strong>Why fourth:</strong> SSE requires a working worker to have events to emit. Run mode shares the Code Merger and normalisation logic but uses a different dispatch path — verify it independently. The missed-event reconnect logic requires both SSE and REST to be working, so implement both in this phase.</p>
+        <ul style="margin-top:6px">
+          <li>Deliverable: Score card renders in real-time. Missed-event reconnect handled. Run mode returns correct inline results.</li>
+          <li>Pain points addressed: P7 (SSE missed events), P10 (Run mode rate limiting).</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="ph-l"><div class="ph-num">PHASE 05</div><div class="ph-name">Calibration + production hardening</div></div>
+      <div class="ph-body">
+        <p><strong>What:</strong> Run the benchmark suite to calibrate language time multipliers empirically. Implement test case S3 caching in Redis. Add orphaned session cleanup job with retry logic. Add Prometheus metrics, alerting rules, and structured logging. Add code similarity hash at submission time.</p>
+        <p><strong>Why last:</strong> Calibration requires the full pipeline to be working — you can't measure multipliers without grading. Observability built before the system is working measures incorrect behaviour. The cleanup job requires a working worker to have retry logic for. Phase 5 is production-readiness on top of a working system, not foundational work.</p>
+        <ul style="margin-top:6px">
+          <li>Deliverable: Production-ready pipeline with observability, calibrated multipliers, S3 caching, and recovery.</li>
+          <li>Pain points addressed: P2 (multiplier calibration), P4 (cleanup job), P5 (S3 caching), P6 (similarity hash), P11 (observability).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout ok" style="margin-top:16px">
+    <span class="ci">✓</span>
+    <p><strong>After Phase 3, the system is functionally correct.</strong> After Phase 4, it has a good candidate experience. After Phase 5, it is production-safe. This progression allows internal testing and staged rollout — Phase 3 can be used for internal QA before Phase 4 is complete.</p>
+  </div>
+</section>
+
+<footer>
+  <span>DSA Evaluation Pipeline // Deep Design Analysis // FRAP v2</span>
+  <span>8 stages · 8 verdicts · 11 pain points · 5 build phases · Enriched Edition</span>
+</footer>
+</body>
+</html>

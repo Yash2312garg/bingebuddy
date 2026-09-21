@@ -1,0 +1,211 @@
+import { pool } from "../../database/db";
+import {
+  EditMenuBody,
+  MenueItemsRequestData,
+  MenueRequestBody,
+} from "../../types/Restaurant/Menue.types";
+
+
+
+export class Menu {
+  static async addNewMenue(new_menue_data: MenueRequestBody) {
+    const query = `INSERT INTO menu (restaurant_id, 
+                    name, 
+                    short_desc, 
+                    long_desc, 
+                    is_active, 
+                    available_from, 
+                    available_until, 
+                    rules)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING *;`;
+
+    const values = [
+      new_menue_data.restaurant_id,
+      new_menue_data.name,
+      new_menue_data.short_desc || "",
+      new_menue_data.long_desc || "",
+      new_menue_data.is_active,
+      this.convert_string_to_time(new_menue_data.available_from),
+      this.convert_string_to_time(new_menue_data.available_until),
+      new_menue_data.rules || {},
+    ];
+
+    const result = await pool.query(query, values);
+    console.log(result);
+    if (result.rowCount && result.rowCount > 0) {
+      return result.rows[0];
+    }
+    return null;
+  }
+
+  static async deleteMenu(menu_id:number){
+    const query = `DELETE from menu where id = $1`
+    const value = [menu_id]
+    const result = await pool.query(query,value);
+    if (result.rowCount && result.rowCount>0){
+      return true
+    }
+    return false
+  }
+
+
+  static async changeMenuStatus(status:boolean, menu_id:number){
+    const query = `
+      UPDATE menu set is_active = $1 where id = $2`;
+    const value = [status,menu_id]
+    const result = await pool.query(query,value);
+    
+    if (result.rowCount && result.rowCount>0){
+      return true
+    }
+    return false
+  }
+
+
+static async editMenu(data: EditMenuBody) {
+  const query = `
+    UPDATE menu
+    SET
+      name = $1,
+      short_desc = $2,
+      long_desc = $3,
+      is_active = $4,
+      available_from = $5,
+      available_until = $6,
+      rules = $7,
+      updated_at = NOW()
+    WHERE id = $8
+    RETURNING
+      id,
+      name,
+      short_desc,
+      long_desc,
+      is_active,
+      available_from,
+      available_until,
+      rules,
+      created_at,
+      updated_at
+  `;
+
+  const values = [
+    data.name,
+    data.short_desc || "",
+    data.long_desc || "",
+    data.is_active,
+    this.convert_string_to_time(data.available_from),
+    this.convert_string_to_time(data.available_until),
+    data.rules || {},
+    data.id,
+  ];
+
+  const result = await pool.query(query, values);
+
+  if (result.rowCount && result.rowCount > 0) {
+    return result.rows[0];
+  }
+
+  return null;
+}
+
+  static async getAllMenu(restaurant_id: string) {
+    const query = `
+    SELECT 
+      id,
+      name,
+      short_desc,
+      long_desc,
+      is_active,
+      available_from,
+      available_until,
+      rules
+    FROM menu
+    WHERE restaurant_id = $1
+  `;
+
+    const values = [restaurant_id];
+
+    const result = await pool.query(query, values);
+
+    return result.rows;
+  }
+
+
+  static async addNewMenueItems(new_item_data: MenueItemsRequestData) {
+    const query = `INSERT INTO menue_items (
+            category_id, 
+            name,
+            short_desc,
+            long_desc,
+            base_price,
+            is_available,
+            is_veg,
+            spice_level,
+            prep_time,
+            tags,
+            img_url,
+            )`;
+    const values = [
+      new_item_data.category_id,
+      new_item_data.name,
+      new_item_data.short_desc,
+      new_item_data.long_desc,
+      new_item_data.is_available,
+      new_item_data.is_veg,
+      new_item_data.spice_level,
+      new_item_data.prep_time,
+      new_item_data.tags || {},
+      new_item_data.img_url || "",
+    ];
+    const data = await pool.query(query, values);
+
+    if (data.rowCount > 0) {
+      return data.rows;
+    } else {
+      null;
+    }
+  }
+
+
+  //   static async addAddons(new_addin_data:){
+
+  //   }
+
+  static async checkExistingMenuByid(menu_id: string) {
+    if (!menu_id) {
+      throw new Error("No Menu id Found");
+    }
+    const query = `SELECT 1 FROM menu WHERE id = $1`;
+    const value = [menu_id];
+    const result = await pool.query(query, value);
+    console.log(result);
+    return result.rowCount > 0;
+  }
+
+  static async checkExistingCategoryByid(category_id: string) {
+    if (!category_id) {
+      throw new Error("No Category id Found");
+    }
+    const query = `SELECT 1 FROM categories WHERE id = $1`;
+    const value = [category_id];
+    const result = await pool.query(query, value);
+    console.log(result);
+    return result.rowCount > 0;
+  }
+
+  private static convert_string_to_time(timeString: string) {
+    if (!timeString) {
+      return null;
+    }
+    const date = new Date(`1970-01-01 ${timeString}`);
+    if (isNaN(date.getTime())) {
+      console.error("Invalid time string provided:", timeString);
+      return null;
+    }
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+    return `${hours}:${minutes}:${seconds}`;
+  }
+}

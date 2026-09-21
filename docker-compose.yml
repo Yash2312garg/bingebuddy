@@ -1,0 +1,573 @@
+# ============================================================
+# BingeBuddy — Unified Multi-Service Docker Compose
+# Services: client | gateway | auth-service | app | notification-service | DBs | Redis | RabbitMQ
+# Usage:
+#   Dev:  docker compose up --build
+#   Prod: docker compose --profile prod up --build
+# ============================================================
+
+name: bingebuddy
+
+services:
+
+  # ============================================================
+  # NGINX API GATEWAY (port 8080)
+  # ============================================================
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: bingebuddy-gateway
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      app-dev:
+        condition: service_healthy
+      auth-service-dev:
+        condition: service_healthy
+      notification-service-dev:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - bingebuddy-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ============================================================
+  # FRONTEND CLIENT — Development (Vite HMR on port 5173)
+  # ============================================================
+  client-dev:
+    build:
+      context: ./client/client
+      dockerfile: Dockerfile
+      target: development
+    container_name: bingebuddy-client-dev
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+    volumes:
+      - ./client/client/src:/usr/src/app/src
+      - ./client/client/public:/usr/src/app/public
+      - ./client/client/index.html:/usr/src/app/index.html:ro
+      - ./client/client/vite.config.ts:/usr/src/app/vite.config.ts:ro
+      - ./client/client/.storybook:/usr/src/app/.storybook:ro
+    develop:
+      watch:
+        - action: sync
+          path: ./client/client/src
+          target: /usr/src/app/src
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - bingebuddy-network
+
+  # ============================================================
+  # FRONTEND CLIENT — Production (Nginx SPA on port 80)
+  # ============================================================
+  client-prod:
+    build:
+      context: ./client/client
+      dockerfile: Dockerfile
+      target: production
+    container_name: bingebuddy-client-prod
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    networks:
+      - bingebuddy-network
+    profiles:
+      - prod
+
+  # ============================================================
+  # MESSAGE BROKER (RabbitMQ)
+  # ============================================================
+  message-broker:
+    image: rabbitmq:3-management-alpine
+    container_name: bingebuddy-rabbitmq
+    ports:
+      - "15672:15672" # Management UI
+    expose:
+      - "5672"        # AMQP port
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASS}"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - bingebuddy-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================================
+  # AUTH SERVICE — Development
+  # ============================================================
+  auth-service-dev:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+      target: development
+    container_name: bingebuddy-auth-dev
+    expose:
+      - "3002"
+    ports:
+      - "${AUTH_DEBUG_PORT:-9231}:9229"
+    env_file:
+      - ./auth-service/.env
+    environment:
+      NODE_ENV: development
+      DOCKER_ENV: "true"
+      DB_HOST: auth-db
+      DB_PORT: 5432
+      REDIS_URL: redis://auth-redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@message-broker:5672
+      PORT: 3002
+    volumes:
+      - ./auth-service/src:/usr/src/app/src:ro
+      - ./auth-service/package.json:/usr/src/app/package.json:ro
+      - ./auth-service/.env:/usr/src/app/.env:ro
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      auth-redis:
+        condition: service_started
+      message-broker:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./auth-service/src
+          target: /usr/src/app/src
+          ignore:
+            - "**/*.test.*"
+        - action: rebuild
+          path: ./auth-service/package.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/auth/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: "512M"
+          cpus: "0.5"
+    networks:
+      - bingebuddy-network
+
+  # ============================================================
+  # AUTH SERVICE — Production
+  # ============================================================
+  auth-service-prod:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: bingebuddy-auth-prod
+    expose:
+      - "3002"
+    environment:
+      NODE_ENV: production
+      DB_HOST: auth-db
+      DB_PORT: 5432
+      REDIS_URL: redis://auth-redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@message-broker:5672
+      PORT: 3002
+    env_file:
+      - ./auth-service/.env
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      auth-redis:
+        condition: service_started
+      message-broker:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/auth/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: "${AUTH_MEMORY_LIMIT:-1G}"
+          cpus: "${AUTH_CPU_LIMIT:-0.5}"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - bingebuddy-network
+    profiles:
+      - prod
+
+  # ============================================================
+  # AUTH DB (PostgreSQL)
+  # ============================================================
+  auth-db:
+    image: postgres:15-alpine
+    container_name: bingebuddy-auth-db
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_DB: "${AUTH_POSTGRES_DB}"
+      POSTGRES_USER: "${AUTH_POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${AUTH_POSTGRES_PASSWORD}"
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+      - ./auth-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - bingebuddy-network
+
+  # ============================================================
+  # AUTH REDIS
+  # ============================================================
+  auth-redis:
+    image: redis:7.2-alpine
+    container_name: bingebuddy-auth-redis
+    expose:
+      - "6379"
+    volumes:
+      - auth_redis_data:/data
+    networks:
+      - bingebuddy-network
+
+  # ============================================================
+  # MAIN APP — Development
+  # ============================================================
+  app-dev:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: development
+    container_name: bingebuddy-app-dev
+    expose:
+      - "3000"
+    ports:
+      - "${APP_DEBUG_PORT:-9229}:9229"
+    env_file:
+      - ./server/.env
+    environment:
+      NODE_ENV: development
+      DOCKER_ENV: "true"
+      DB_HOST: main-db
+      DB_PORT: 5432
+      REDIS_URL: redis://main-redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@message-broker:5672
+      PORT: 3000
+    volumes:
+      - ./server/src:/usr/src/app/src:ro
+      - ./server/package.json:/usr/src/app/package.json:ro
+      - ./server/.env:/usr/src/app/.env:ro
+    depends_on:
+      main-db:
+        condition: service_healthy
+      main-redis:
+        condition: service_started
+      message-broker:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./server/src
+          target: /usr/src/app/src
+          ignore:
+            - "**/*.test.*"
+        - action: rebuild
+          path: ./server/package.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: "512M"
+          cpus: "0.5"
+    networks:
+      - bingebuddy-network
+
+  # ============================================================
+  # MAIN APP — Production
+  # ============================================================
+  app-prod:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: production
+    container_name: bingebuddy-app-prod
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      DB_HOST: main-db
+      DB_PORT: 5432
+      REDIS_URL: redis://main-redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@message-broker:5672
+      PORT: 3000
+    env_file:
+      - ./server/.env
+    depends_on:
+      main-db:
+        condition: service_healthy
+      main-redis:
+        condition: service_started
+      message-broker:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: "${APP_MEMORY_LIMIT:-1G}"
+          cpus: "${APP_CPU_LIMIT:-0.5}"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - bingebuddy-network
+    profiles:
+      - prod
+
+  # ============================================================
+  # MAIN DB (PostgreSQL)
+  # ============================================================
+  main-db:
+    image: postgres:15-alpine
+    container_name: bingebuddy-main-db
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_DB: "${MAIN_POSTGRES_DB}"
+      POSTGRES_USER: "${MAIN_POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${MAIN_POSTGRES_PASSWORD}"
+    volumes:
+      - main_postgres_data:/var/lib/postgresql/data
+      - ./server/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - bingebuddy-network
+
+  # ============================================================
+  # MAIN REDIS
+  # ============================================================
+  main-redis:
+    image: redis:7.2-alpine
+    container_name: bingebuddy-main-redis
+    expose:
+      - "6379"
+    volumes:
+      - main_redis_data:/data
+    networks:
+      - bingebuddy-network
+
+  # ============================================================
+  # NOTIFICATION SERVICE — Development
+  # ============================================================
+  notification-service-dev:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+      target: development
+    container_name: bingebuddy-notification-dev
+    expose:
+      - "3001"
+    env_file:
+      - ./notification-service/.env
+    environment:
+      NODE_ENV: development
+      DOCKER_ENV: "true"
+      DB_HOST: notification-db
+      DB_PORT: 5432
+      REDIS_URL: redis://notification-redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@message-broker:5672
+      PORT: 3001
+    volumes:
+      - ./notification-service/src:/usr/src/app/src:ro
+      - ./notification-service/package.json:/usr/src/app/package.json:ro
+      - ./notification-service/.env:/usr/src/app/.env:ro
+    depends_on:
+      notification-db:
+        condition: service_healthy
+      notification-redis:
+        condition: service_started
+      message-broker:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./notification-service/src
+          target: /usr/src/app/src
+        - action: rebuild
+          path: ./notification-service/package.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: "512M"
+          cpus: "0.25"
+    networks:
+      - bingebuddy-network
+
+  # ============================================================
+  # NOTIFICATION SERVICE — Production
+  # ============================================================
+  notification-service-prod:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: bingebuddy-notification-prod
+    expose:
+      - "3001"
+    environment:
+      NODE_ENV: production
+      DB_HOST: notification-db
+      DB_PORT: 5432
+      REDIS_URL: redis://notification-redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@message-broker:5672
+      PORT: 3001
+    env_file:
+      - ./notification-service/.env
+    depends_on:
+      notification-db:
+        condition: service_healthy
+      notification-redis:
+        condition: service_started
+      message-broker:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: "${NOTIF_MEMORY_LIMIT:-1G}"
+          cpus: "${NOTIF_CPU_LIMIT:-0.5}"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - bingebuddy-network
+    profiles:
+      - prod
+
+  # ============================================================
+  # NOTIFICATION DB (PostgreSQL)
+  # ============================================================
+  notification-db:
+    image: postgres:15-alpine
+    container_name: bingebuddy-notification-db
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_DB: "${NOTIF_POSTGRES_DB}"
+      POSTGRES_USER: "${NOTIF_POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${NOTIF_POSTGRES_PASSWORD}"
+    volumes:
+      - notification_postgres_data:/var/lib/postgresql/data
+      - ./notification-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - bingebuddy-network
+
+  # ============================================================
+  # NOTIFICATION REDIS
+  # ============================================================
+  notification-redis:
+    image: redis:7.2-alpine
+    container_name: bingebuddy-notification-redis
+    expose:
+      - "6379"
+    volumes:
+      - notification_redis_data:/data
+    networks:
+      - bingebuddy-network
+
+# ============================================================
+# Named volumes
+# ============================================================
+volumes:
+  main_postgres_data:
+  main_redis_data:
+  notification_postgres_data:
+  notification_redis_data:
+  rabbitmq_data:
+  auth_postgres_data:
+  auth_redis_data:
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  bingebuddy-network:
+    driver: bridge

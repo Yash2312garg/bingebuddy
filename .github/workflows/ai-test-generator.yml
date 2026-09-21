@@ -1,0 +1,77 @@
+name: Phase 3 CI/CD — AI Quality Gate
+
+on:
+  pull_request:
+    branches:
+      - development
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  run-quality-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # ✅ Use GITHUB_TOKEN for authenticated checkout
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch base branch for diff
+        # ✅ Use authenticated URL — fixes "No such device or address"
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
+        env:
+          # ✅ Inject token so git can authenticate
+          GIT_ASKPASS: echo
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Initialize Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './server/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./server
+        run: |
+          npm ci
+          # ✅ Safety net — install if missing from package.json
+          node -e "require('@google/genai')" 2>/dev/null || npm install @google/genai --no-save
+
+      - name: Execute quality gates
+        working-directory: ./server
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          JIRA_DOMAIN: ${{ secrets.JIRA_DOMAIN }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/ai-runner/generate-tests.js
+
+      - name: Commit generated tests back to PR branch
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # ✅ Set authenticated remote URL so push works
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+
+          if [ -n "$(git status --porcelain server/tests/ai-generated)" ]; then
+            git add server/tests/ai-generated/
+            git commit -m "chore(testing): auto-generated verified unit tests [skip ci]"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+            echo "✅ Generated tests committed to PR branch."
+          else
+            echo "No new test files to commit."
+          fi

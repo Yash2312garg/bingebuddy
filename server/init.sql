@@ -1,57 +1,25 @@
---
--- PostgreSQL database dump
---
-
-\restrict U6sd983feYUhwsbAYnxJSGDhaLs4odOhBfusAvTAiMMa64RQNAa6fh8wqGCt2H7
-
--- Dumped from database version 14.19 (Homebrew)
--- Dumped by pg_dump version 14.19 (Homebrew)
+-- =============================================================================
+-- MAIN SERVICE DATABASE DUMP (Strict SSOT - No Auth Data)
+-- =============================================================================
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Name: auth_status_enum; Type: TYPE; Schema: public; Owner: yash
---
+-- Enable UUID generation (Required for schema)
+CREATE EXTENSION IF NOT EXISTS pgcrypto SCHEMA public;
 
-CREATE TYPE public.auth_status_enum AS ENUM (
-    'PENDING',
-    'APPROVED',
-    'REJECTED'
-);
+-- -----------------------------------------------------------------------------
+-- 1. FUNCTIONS
+-- -----------------------------------------------------------------------------
 
-
-ALTER TYPE public.auth_status_enum OWNER TO yash;
-
---
--- Name: update_updat4edatcolumn(); Type: FUNCTION; Schema: public; Owner: yash
---
-
-CREATE FUNCTION public.update_updat4edatcolumn() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN 
-NEW.updated_at = CURRENT_TIMESTAMP;
-RETURN NEW;
-END;
-$$;
-
-
-ALTER FUNCTION public.update_updat4edatcolumn() OWNER TO yash;
-
---
--- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: yash
---
-
-CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
+CREATE OR REPLACE FUNCTION public.update_updated_at_column() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -60,384 +28,56 @@ BEGIN
 END;
 $$;
 
-
-ALTER FUNCTION public.update_updated_at_column() OWNER TO yash;
-
 SET default_tablespace = '';
-
 SET default_table_access_method = heap;
 
---
--- Name: addons; Type: TABLE; Schema: public; Owner: yash
---
+-- -----------------------------------------------------------------------------
+-- 2. TABLES
+-- -----------------------------------------------------------------------------
 
-CREATE TABLE public.addons (
-    id integer NOT NULL,
-    name character varying(256),
-    description character varying(500),
-    is_active boolean,
+CREATE TABLE public.restaurant_details (
+    id UUID PRIMARY KEY,
+    name character varying(255) NOT NULL,
+    description text,
+    pan character varying(10) NOT NULL,
+    fassai character varying(256) NOT NULL,
+    adhaar_card character varying(256) NOT NULL,
+    gst character varying(256) NOT NULL,
+    logo_url character varying(256),
+    full_img character varying(256),
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+CREATE TABLE public.restaurant_addresses (
+    id SERIAL PRIMARY KEY,
+    restaurant_id UUID UNIQUE NOT NULL REFERENCES public.restaurant_details(id) ON DELETE CASCADE,
+    full_address text,
+    street character varying(255),
+    city character varying(100),
+    state character varying(100),
+    postal_code character varying(20),
+    country character varying(100),
+    latitude numeric(9,6),
+    longitude numeric(9,6),
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+CREATE TABLE public.restaurant_hours (
+    id SERIAL PRIMARY KEY,
+    restaurant_id UUID NOT NULL REFERENCES public.restaurant_details(id) ON DELETE CASCADE,
+    day_of_week integer,
+    open_time time without time zone,
+    close_time time without time zone,
+    is_closed time without time zone, 
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
-
-
-ALTER TABLE public.addons OWNER TO yash;
-
---
--- Name: addons_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.addons_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.addons_id_seq OWNER TO yash;
-
---
--- Name: addons_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.addons_id_seq OWNED BY public.addons.id;
-
-
---
--- Name: categories; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.categories (
-    id integer NOT NULL,
-    menue_id integer NOT NULL,
-    name character varying(256) NOT NULL,
-    short_desc character varying(500),
-    long_desc text,
-    display_order integer,
-    is_active boolean,
-    rules json,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.categories OWNER TO yash;
-
---
--- Name: categories_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.categories_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.categories_id_seq OWNER TO yash;
-
---
--- Name: categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.categories_id_seq OWNED BY public.categories.id;
-
-
---
--- Name: combo_addons; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.combo_addons (
-    id integer NOT NULL,
-    combo_id integer,
-    addon_id integer,
-    price integer,
-    is_required boolean,
-    max_quantity integer,
-    min_quantity integer,
-    display_order integer,
-    rules json,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.combo_addons OWNER TO yash;
-
---
--- Name: combo_addons_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.combo_addons_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.combo_addons_id_seq OWNER TO yash;
-
---
--- Name: combo_addons_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.combo_addons_id_seq OWNED BY public.combo_addons.id;
-
-
---
--- Name: combo_items; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.combo_items (
-    id integer NOT NULL,
-    combo_id integer,
-    item_id integer,
-    is_required boolean,
-    max_quantity boolean,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.combo_items OWNER TO yash;
-
---
--- Name: combo_items_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.combo_items_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.combo_items_id_seq OWNER TO yash;
-
---
--- Name: combo_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.combo_items_id_seq OWNED BY public.combo_items.id;
-
-
---
--- Name: combo_variants; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.combo_variants (
-    id integer NOT NULL,
-    combo_id integer,
-    variant_id integer,
-    is_required boolean,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.combo_variants OWNER TO yash;
-
---
--- Name: combo_variants_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.combo_variants_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.combo_variants_id_seq OWNER TO yash;
-
---
--- Name: combo_variants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.combo_variants_id_seq OWNED BY public.combo_variants.id;
-
-
---
--- Name: combos; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.combos (
-    id integer NOT NULL,
-    category_id integer,
-    name character varying(256),
-    short_desc character varying(500),
-    long_desc text,
-    base_price integer,
-    is_available boolean DEFAULT false,
-    max_items integer,
-    min_items integer,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.combos OWNER TO yash;
-
---
--- Name: combos_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.combos_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.combos_id_seq OWNER TO yash;
-
---
--- Name: combos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.combos_id_seq OWNED BY public.combos.id;
-
-
---
--- Name: item_addons; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.item_addons (
-    id integer NOT NULL,
-    item_id integer,
-    addon_id integer,
-    price integer,
-    is_required integer,
-    max_quantity integer,
-    min_quantity integer,
-    display_order integer,
-    rules json,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.item_addons OWNER TO yash;
-
---
--- Name: item_addons_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.item_addons_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.item_addons_id_seq OWNER TO yash;
-
---
--- Name: item_addons_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.item_addons_id_seq OWNED BY public.item_addons.id;
-
-
---
--- Name: item_availability; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.item_availability (
-    id integer NOT NULL,
-    item_id integer NOT NULL,
-    available_from time without time zone NOT NULL,
-    available_until time without time zone NOT NULL,
-    days_available json,
-    is_active boolean DEFAULT false,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.item_availability OWNER TO yash;
-
---
--- Name: item_availability_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.item_availability_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.item_availability_id_seq OWNER TO yash;
-
---
--- Name: item_availability_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.item_availability_id_seq OWNED BY public.item_availability.id;
-
-
---
--- Name: item_variants; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.item_variants (
-    id integer NOT NULL,
-    item_id integer,
-    variant_id integer,
-    is_required boolean,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.item_variants OWNER TO yash;
-
---
--- Name: item_variants_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.item_variants_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.item_variants_id_seq OWNER TO yash;
-
---
--- Name: item_variants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.item_variants_id_seq OWNED BY public.item_variants.id;
-
-
---
--- Name: menu; Type: TABLE; Schema: public; Owner: yash
---
 
 CREATE TABLE public.menu (
-    id integer NOT NULL,
-    restaurant_id integer NOT NULL,
+    id SERIAL PRIMARY KEY,
+    restaurant_id UUID NOT NULL REFERENCES public.restaurant_details(id) ON DELETE CASCADE,
     name character varying(256) NOT NULL,
     short_desc character varying(500) NOT NULL,
     long_desc text NOT NULL,
@@ -449,38 +89,22 @@ CREATE TABLE public.menu (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
-
-ALTER TABLE public.menu OWNER TO yash;
-
---
--- Name: menu_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.menu_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.menu_id_seq OWNER TO yash;
-
---
--- Name: menu_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.menu_id_seq OWNED BY public.menu.id;
-
-
---
--- Name: menue_items; Type: TABLE; Schema: public; Owner: yash
---
+CREATE TABLE public.categories (
+    id SERIAL PRIMARY KEY,
+    menu_id integer NOT NULL REFERENCES public.menu(id) ON DELETE CASCADE,
+    name character varying(256) NOT NULL,
+    short_desc character varying(500),
+    long_desc text,
+    display_order integer,
+    is_active boolean,
+    rules json,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE public.menue_items (
-    id integer NOT NULL,
-    category_id integer NOT NULL,
+    id SERIAL PRIMARY KEY,
+    category_id integer NOT NULL REFERENCES public.categories(id) ON DELETE CASCADE,
     name character varying(256) NOT NULL,
     short_desc character varying(500),
     long_desc text,
@@ -495,205 +119,29 @@ CREATE TABLE public.menue_items (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
-
-ALTER TABLE public.menue_items OWNER TO yash;
-
---
--- Name: menue_items_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.menue_items_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.menue_items_id_seq OWNER TO yash;
-
---
--- Name: menue_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.menue_items_id_seq OWNED BY public.menue_items.id;
-
-
---
--- Name: restaurant_accounts; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.restaurant_accounts (
-    id integer NOT NULL,
-    email character varying(255),
-    reference_id character varying(15),
-    phone_number character varying(20),
-    created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now(),
-    auth_status public.auth_status_enum DEFAULT 'PENDING'::public.auth_status_enum
-);
-
-
-ALTER TABLE public.restaurant_accounts OWNER TO yash;
-
---
--- Name: restaurant_accounts_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.restaurant_accounts_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.restaurant_accounts_id_seq OWNER TO yash;
-
---
--- Name: restaurant_accounts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.restaurant_accounts_id_seq OWNED BY public.restaurant_accounts.id;
-
-
---
--- Name: restaurant_addresses; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.restaurant_addresses (
-    id integer NOT NULL,
-    user_id integer,
-    full_address text,
-    street character varying(255),
-    city character varying(100),
-    state character varying(100),
-    postal_code character varying(20),
-    country character varying(100),
-    latitude numeric(9,6),
-    longitude numeric(9,6),
-    created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now()
-);
-
-
-ALTER TABLE public.restaurant_addresses OWNER TO yash;
-
---
--- Name: restaurant_addresses_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.restaurant_addresses_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.restaurant_addresses_id_seq OWNER TO yash;
-
---
--- Name: restaurant_addresses_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.restaurant_addresses_id_seq OWNED BY public.restaurant_addresses.id;
-
-
---
--- Name: restaurant_details; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.restaurant_details (
-    id integer NOT NULL,
-    user_id integer,
-    name character varying(255) NOT NULL,
-    description text,
-    pan character varying(10) NOT NULL,
-    fassai character varying(256) NOT NULL,
-    adhaar_card character varying(256) NOT NULL,
-    gst character varying(256) NOT NULL,
-    logo_url character varying(256),
-    full_img character varying(256),
-    created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now()
-);
-
-
-ALTER TABLE public.restaurant_details OWNER TO yash;
-
---
--- Name: restaurant_details_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.restaurant_details_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.restaurant_details_id_seq OWNER TO yash;
-
---
--- Name: restaurant_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.restaurant_details_id_seq OWNED BY public.restaurant_details.id;
-
-
---
--- Name: restaurant_hours; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.restaurant_hours (
-    id integer NOT NULL,
-    restaurant_id integer,
-    day_of_week integer,
-    open_time time without time zone,
-    close_time time without time zone,
-    is_closed time without time zone,
+CREATE TABLE public.item_availability (
+    id SERIAL PRIMARY KEY,
+    item_id integer NOT NULL REFERENCES public.menue_items(id) ON DELETE CASCADE,
+    available_from time without time zone NOT NULL,
+    available_until time without time zone NOT NULL,
+    days_available json,
+    is_active boolean DEFAULT false,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
-
-ALTER TABLE public.restaurant_hours OWNER TO yash;
-
---
--- Name: restaurant_hours_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.restaurant_hours_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.restaurant_hours_id_seq OWNER TO yash;
-
---
--- Name: restaurant_hours_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.restaurant_hours_id_seq OWNED BY public.restaurant_hours.id;
-
-
---
--- Name: variant_options; Type: TABLE; Schema: public; Owner: yash
---
+CREATE TABLE public.variants (
+    id SERIAL PRIMARY KEY,
+    name character varying(256),
+    description text,
+    is_active boolean,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE public.variant_options (
-    id integer NOT NULL,
-    variant_id integer,
+    id SERIAL PRIMARY KEY,
+    variant_id integer REFERENCES public.variants(id) ON DELETE CASCADE,
     name character varying(265),
     description text,
     price_modifier integer,
@@ -702,777 +150,279 @@ CREATE TABLE public.variant_options (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE public.item_variants (
+    id SERIAL PRIMARY KEY,
+    item_id integer REFERENCES public.menue_items(id) ON DELETE CASCADE,
+    variant_id integer REFERENCES public.variants(id) ON DELETE CASCADE,
+    is_required boolean,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
 
-ALTER TABLE public.variant_options OWNER TO yash;
-
---
--- Name: variant_options_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.variant_options_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.variant_options_id_seq OWNER TO yash;
-
---
--- Name: variant_options_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.variant_options_id_seq OWNED BY public.variant_options.id;
-
-
---
--- Name: variants; Type: TABLE; Schema: public; Owner: yash
---
-
-CREATE TABLE public.variants (
-    id integer NOT NULL,
+CREATE TABLE public.addons (
+    id SERIAL PRIMARY KEY,
     name character varying(256),
-    description text,
+    description character varying(500),
     is_active boolean,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
-
-ALTER TABLE public.variants OWNER TO yash;
-
---
--- Name: variants_id_seq; Type: SEQUENCE; Schema: public; Owner: yash
---
-
-CREATE SEQUENCE public.variants_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.variants_id_seq OWNER TO yash;
-
---
--- Name: variants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: yash
---
-
-ALTER SEQUENCE public.variants_id_seq OWNED BY public.variants.id;
-
-
---
--- Name: addons id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.addons ALTER COLUMN id SET DEFAULT nextval('public.addons_id_seq'::regclass);
-
-
---
--- Name: categories id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.categories ALTER COLUMN id SET DEFAULT nextval('public.categories_id_seq'::regclass);
-
-
---
--- Name: combo_addons id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.combo_addons ALTER COLUMN id SET DEFAULT nextval('public.combo_addons_id_seq'::regclass);
-
-
---
--- Name: combo_items id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.combo_items ALTER COLUMN id SET DEFAULT nextval('public.combo_items_id_seq'::regclass);
-
-
---
--- Name: combo_variants id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.combo_variants ALTER COLUMN id SET DEFAULT nextval('public.combo_variants_id_seq'::regclass);
-
-
---
--- Name: combos id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.combos ALTER COLUMN id SET DEFAULT nextval('public.combos_id_seq'::regclass);
-
-
---
--- Name: item_addons id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.item_addons ALTER COLUMN id SET DEFAULT nextval('public.item_addons_id_seq'::regclass);
-
-
---
--- Name: item_availability id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.item_availability ALTER COLUMN id SET DEFAULT nextval('public.item_availability_id_seq'::regclass);
-
-
---
--- Name: item_variants id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.item_variants ALTER COLUMN id SET DEFAULT nextval('public.item_variants_id_seq'::regclass);
-
-
---
--- Name: menu id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.menu ALTER COLUMN id SET DEFAULT nextval('public.menu_id_seq'::regclass);
-
-
---
--- Name: menue_items id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.menue_items ALTER COLUMN id SET DEFAULT nextval('public.menue_items_id_seq'::regclass);
-
-
---
--- Name: restaurant_accounts id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_accounts ALTER COLUMN id SET DEFAULT nextval('public.restaurant_accounts_id_seq'::regclass);
-
-
---
--- Name: restaurant_addresses id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_addresses ALTER COLUMN id SET DEFAULT nextval('public.restaurant_addresses_id_seq'::regclass);
-
-
---
--- Name: restaurant_details id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_details ALTER COLUMN id SET DEFAULT nextval('public.restaurant_details_id_seq'::regclass);
-
-
---
--- Name: restaurant_hours id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_hours ALTER COLUMN id SET DEFAULT nextval('public.restaurant_hours_id_seq'::regclass);
-
-
---
--- Name: variant_options id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.variant_options ALTER COLUMN id SET DEFAULT nextval('public.variant_options_id_seq'::regclass);
-
-
---
--- Name: variants id; Type: DEFAULT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.variants ALTER COLUMN id SET DEFAULT nextval('public.variants_id_seq'::regclass);
-
-
---
--- Data for Name: addons; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.addons (id, name, description, is_active, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: categories; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.categories (id, menue_id, name, short_desc, long_desc, display_order, is_active, rules, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: combo_addons; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.combo_addons (id, combo_id, addon_id, price, is_required, max_quantity, min_quantity, display_order, rules, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: combo_items; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.combo_items (id, combo_id, item_id, is_required, max_quantity, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: combo_variants; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.combo_variants (id, combo_id, variant_id, is_required, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: combos; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.combos (id, category_id, name, short_desc, long_desc, base_price, is_available, max_items, min_items, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: item_addons; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.item_addons (id, item_id, addon_id, price, is_required, max_quantity, min_quantity, display_order, rules, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: item_availability; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.item_availability (id, item_id, available_from, available_until, days_available, is_active, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: item_variants; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.item_variants (id, item_id, variant_id, is_required, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: menu; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.menu (id, restaurant_id, name, short_desc, long_desc, is_active, available_from, available_until, rules, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: menue_items; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.menue_items (id, category_id, name, short_desc, long_desc, base_price, is_available, is_veg, spice_level, prep_time, tags, img_url, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: restaurant_accounts; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.restaurant_accounts (id, email, reference_id, phone_number, created_at, updated_at, auth_status) FROM stdin;
-25	check@123.com	THEG-NSAD	\N	2026-01-05 13:52:48.612904	2026-01-05 13:52:48.612904	PENDING
-\.
-
-
---
--- Data for Name: restaurant_addresses; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.restaurant_addresses (id, user_id, full_address, street, city, state, postal_code, country, latitude, longitude, created_at, updated_at) FROM stdin;
-6	25	asads	asdasd	asdasda	dasdasd	asdasdasd	India	0.000000	0.000000	2026-01-05 13:52:48.633298	2026-01-05 13:52:48.633298
-\.
-
-
---
--- Data for Name: restaurant_details; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.restaurant_details (id, user_id, name, description, pan, fassai, adhaar_card, gst, logo_url, full_img, created_at, updated_at) FROM stdin;
-11	25	T?he golden spoon 	asdlasdmsad	asdlkansd	asdlkasd	asdlkmasd	asdlkansad	\N	\N	2026-01-05 13:52:48.624838	2026-01-05 13:52:48.624838
-\.
-
-
---
--- Data for Name: restaurant_hours; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.restaurant_hours (id, restaurant_id, day_of_week, open_time, close_time, is_closed, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: variant_options; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.variant_options (id, variant_id, name, description, price_modifier, display_order, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Data for Name: variants; Type: TABLE DATA; Schema: public; Owner: yash
---
-
-COPY public.variants (id, name, description, is_active, created_at, updated_at) FROM stdin;
-\.
-
-
---
--- Name: addons_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.addons_id_seq', 1, false);
-
-
---
--- Name: categories_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.categories_id_seq', 1, true);
-
-
---
--- Name: combo_addons_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.combo_addons_id_seq', 1, false);
-
-
---
--- Name: combo_items_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.combo_items_id_seq', 1, false);
-
-
---
--- Name: combo_variants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.combo_variants_id_seq', 1, false);
-
-
---
--- Name: combos_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.combos_id_seq', 1, false);
-
-
---
--- Name: item_addons_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.item_addons_id_seq', 1, false);
-
-
---
--- Name: item_availability_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.item_availability_id_seq', 1, false);
-
-
---
--- Name: item_variants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.item_variants_id_seq', 1, false);
-
-
---
--- Name: menu_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.menu_id_seq', 9, true);
-
-
---
--- Name: menue_items_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.menue_items_id_seq', 1, false);
-
-
---
--- Name: restaurant_accounts_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.restaurant_accounts_id_seq', 25, true);
-
-
---
--- Name: restaurant_addresses_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.restaurant_addresses_id_seq', 6, true);
-
-
---
--- Name: restaurant_details_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.restaurant_details_id_seq', 11, true);
-
-
---
--- Name: restaurant_hours_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.restaurant_hours_id_seq', 1, false);
-
-
---
--- Name: variant_options_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.variant_options_id_seq', 1, false);
-
-
---
--- Name: variants_id_seq; Type: SEQUENCE SET; Schema: public; Owner: yash
---
-
-SELECT pg_catalog.setval('public.variants_id_seq', 1, false);
-
-
---
--- Name: addons addons_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.addons
-    ADD CONSTRAINT addons_pkey PRIMARY KEY (id);
-
-
---
--- Name: categories categories_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.categories
-    ADD CONSTRAINT categories_pkey PRIMARY KEY (id);
-
-
---
--- Name: combo_addons combo_addons_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.combo_addons
-    ADD CONSTRAINT combo_addons_pkey PRIMARY KEY (id);
-
-
---
--- Name: combo_items combo_items_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.combo_items
-    ADD CONSTRAINT combo_items_pkey PRIMARY KEY (id);
-
-
---
--- Name: combo_variants combo_variants_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.combo_variants
-    ADD CONSTRAINT combo_variants_pkey PRIMARY KEY (id);
-
-
---
--- Name: combos combos_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.combos
-    ADD CONSTRAINT combos_pkey PRIMARY KEY (id);
-
-
---
--- Name: item_addons item_addons_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.item_addons
-    ADD CONSTRAINT item_addons_pkey PRIMARY KEY (id);
-
-
---
--- Name: item_availability item_availability_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.item_availability
-    ADD CONSTRAINT item_availability_pkey PRIMARY KEY (id);
-
-
---
--- Name: item_variants item_variants_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.item_variants
-    ADD CONSTRAINT item_variants_pkey PRIMARY KEY (id);
-
-
---
--- Name: menu menu_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.menu
-    ADD CONSTRAINT menu_pkey PRIMARY KEY (id);
-
-
---
--- Name: menue_items menue_items_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.menue_items
-    ADD CONSTRAINT menue_items_pkey PRIMARY KEY (id);
-
-
---
--- Name: restaurant_accounts restaurant_accounts_email_key; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_accounts
-    ADD CONSTRAINT restaurant_accounts_email_key UNIQUE (email);
-
-
---
--- Name: restaurant_accounts restaurant_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_accounts
-    ADD CONSTRAINT restaurant_accounts_pkey PRIMARY KEY (id);
-
-
---
--- Name: restaurant_addresses restaurant_addresses_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_addresses
-    ADD CONSTRAINT restaurant_addresses_pkey PRIMARY KEY (id);
-
-
---
--- Name: restaurant_addresses restaurant_addresses_user_id_key; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_addresses
-    ADD CONSTRAINT restaurant_addresses_user_id_key UNIQUE (user_id);
-
-
---
--- Name: restaurant_details restaurant_details_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_details
-    ADD CONSTRAINT restaurant_details_pkey PRIMARY KEY (id);
-
-
---
--- Name: restaurant_details restaurant_details_user_id_key; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_details
-    ADD CONSTRAINT restaurant_details_user_id_key UNIQUE (user_id);
-
-
---
--- Name: restaurant_hours restaurant_hours_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_hours
-    ADD CONSTRAINT restaurant_hours_pkey PRIMARY KEY (id);
-
-
---
--- Name: variant_options variant_options_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.variant_options
-    ADD CONSTRAINT variant_options_pkey PRIMARY KEY (id);
-
-
---
--- Name: variants variants_pkey; Type: CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.variants
-    ADD CONSTRAINT variants_pkey PRIMARY KEY (id);
-
-
---
--- Name: addons set_updated_add_ons; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_add_ons BEFORE UPDATE ON public.addons FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: restaurant_accounts set_updated_at; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.restaurant_accounts FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: restaurant_details set_updated_at; Type: TRIGGER; Schema: public; Owner: yash
---
+CREATE TABLE public.item_addons (
+    id SERIAL PRIMARY KEY,
+    item_id integer REFERENCES public.menue_items(id) ON DELETE CASCADE,
+    addon_id integer REFERENCES public.addons(id) ON DELETE CASCADE,
+    price integer,
+    is_required integer,
+    max_quantity integer,
+    min_quantity integer,
+    display_order integer,
+    rules json,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+-- -----------------------------------------------------------------------------
+-- 3. TRIGGERS
+-- -----------------------------------------------------------------------------
 
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.restaurant_details FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: categories set_updated_at_categories; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_at_categories BEFORE UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: menu set_updated_at_mennu; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_at_mennu BEFORE UPDATE ON public.menu FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: restaurant_hours set_updated_at_restaurant_hours; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_at_restaurant_hours BEFORE UPDATE ON public.restaurant_hours FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: combo_addons set_updated_combo_addons; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_combo_addons BEFORE UPDATE ON public.combo_addons FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: combo_variants set_updated_combo_variants; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_combo_variants BEFORE UPDATE ON public.combo_variants FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: combos set_updated_combos; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_combos BEFORE UPDATE ON public.combos FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: combo_items set_updated_combos_items; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_combos_items BEFORE UPDATE ON public.combo_items FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: item_addons set_updated_item_addons; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_item_addons BEFORE UPDATE ON public.item_addons FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: item_availability set_updated_item_availability; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_item_availability BEFORE UPDATE ON public.item_availability FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: item_variants set_updated_items_variants; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_items_variants BEFORE UPDATE ON public.item_variants FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: menue_items set_updated_menue_items; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_menue_items BEFORE UPDATE ON public.menue_items FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: variant_options set_updated_variant_options; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_variant_options BEFORE UPDATE ON public.variant_options FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: variants set_updated_variants; Type: TRIGGER; Schema: public; Owner: yash
---
-
-CREATE TRIGGER set_updated_variants BEFORE UPDATE ON public.variants FOR EACH ROW EXECUTE FUNCTION public.update_updat4edatcolumn();
-
-
---
--- Name: categories fk_categories_menu; Type: FK CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.categories
-    ADD CONSTRAINT fk_categories_menu FOREIGN KEY (menue_id) REFERENCES public.menu(id) ON DELETE CASCADE;
-
-
---
--- Name: menue_items fk_categories_menu; Type: FK CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.menue_items
-    ADD CONSTRAINT fk_categories_menu FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;
-
-
---
--- Name: item_availability fk_item_availabiltiy_item; Type: FK CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.item_availability
-    ADD CONSTRAINT fk_item_availabiltiy_item FOREIGN KEY (item_id) REFERENCES public.menue_items(id) ON DELETE CASCADE;
-
-
---
--- Name: menu fk_menu_restaurant; Type: FK CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.menu
-    ADD CONSTRAINT fk_menu_restaurant FOREIGN KEY (restaurant_id) REFERENCES public.restaurant_accounts(id) ON DELETE CASCADE;
-
-
---
--- Name: restaurant_hours fk_restaurant_hours_restaurant; Type: FK CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_hours
-    ADD CONSTRAINT fk_restaurant_hours_restaurant FOREIGN KEY (restaurant_id) REFERENCES public.restaurant_accounts(id) ON DELETE CASCADE;
-
-
---
--- Name: restaurant_addresses restaurant_addresses_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_addresses
-    ADD CONSTRAINT restaurant_addresses_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.restaurant_accounts(id) ON DELETE CASCADE;
-
-
---
--- Name: restaurant_details restaurant_details_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: yash
---
-
-ALTER TABLE ONLY public.restaurant_details
-    ADD CONSTRAINT restaurant_details_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.restaurant_accounts(id) ON DELETE CASCADE;
-
-
---
--- PostgreSQL database dump complete
---
-
-\unrestrict U6sd983feYUhwsbAYnxJSGDhaLs4odOhBfusAvTAiMMa64RQNAa6fh8wqGCt2H7
-
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.restaurant_addresses FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER set_updated_at_restaurant_hours BEFORE UPDATE ON public.restaurant_hours FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER set_updated_at_mennu BEFORE UPDATE ON public.menu FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER set_updated_at_categories BEFORE UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+CREATE TRIGGER set_updated_menue_items BEFORE UPDATE ON public.menue_items FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- =============================================================================
+-- 4. SEED DATA 
+-- =============================================================================
+BEGIN;
+
+-- EXACTLY 3 RESTAURANTS
+INSERT INTO public.restaurant_details (id, name, description, pan, fassai, adhaar_card, gst) VALUES
+('550e8400-e29b-41d4-a716-446655440001', 'Delhi Chaat Express', 'Authentic Chandni Chowk street food.', 'ABCDE1111A', '10022011000123', '200030004000', '07AAAAA1111A1Z1'),
+('550e8400-e29b-41d4-a716-446655440002', 'The Hyderabadi Sun', 'Premium long-grain slow dum biryanis.', 'BCDEF2222B', '10022044000456', '300040005000', '36BBBBB2222B1Z2'),
+('550e8400-e29b-41d4-a716-446655440003', 'Mumbai Tiffin Co.', 'Pure vegetarian coastal maharashtrian.', 'CDEFG3333C', '10022022000789', '400050006000', '27CCCCC3333C1Z3');
+
+-- EXACTLY 3 ADDRESSES (1 per restaurant due to UNIQUE constraint)
+INSERT INTO public.restaurant_addresses (id, restaurant_id, full_address, street, city, state, postal_code, country, latitude, longitude) VALUES
+(1, '550e8400-e29b-41d4-a716-446655440001', 'Shop 4, Connaught Place', 'Connaught Place', 'New Delhi', 'Delhi', '110001', 'India', 28.6304, 77.2177),
+(2, '550e8400-e29b-41d4-a716-446655440002', 'Plot 88, Gachibowli IT', 'Gachibowli', 'Hyderabad', 'Telangana', '500032', 'India', 17.4401, 78.3489),
+(3, '550e8400-e29b-41d4-a716-446655440003', 'Building 12, Linking Road', 'Linking Road', 'Mumbai', 'Maharashtra', '400054', 'India', 19.0843, 72.8360);
+
+-- 21 HOURS (3 restaurants x 7 days)
+INSERT INTO public.restaurant_hours (restaurant_id, day_of_week, open_time, close_time) 
+SELECT r_id, day, '09:00:00', '23:00:00'
+FROM unnest(ARRAY[
+    '550e8400-e29b-41d4-a716-446655440001'::uuid, 
+    '550e8400-e29b-41d4-a716-446655440002'::uuid, 
+    '550e8400-e29b-41d4-a716-446655440003'::uuid
+]) r_id 
+CROSS JOIN unnest(ARRAY[1,2,3,4,5,6,7]) day;
+
+-- 10 MENUS (Distributed across the 3 restaurants)
+INSERT INTO public.menu (id, restaurant_id, name, short_desc, long_desc, is_active, available_from, available_until) VALUES
+(1, '550e8400-e29b-41d4-a716-446655440001', 'Morning Breakfast', 'Classic Old Delhi morning breakfast', 'Heavy rich matching traditional breakfast available early hours.', true, '08:00:00', '12:00:00'),
+(2, '550e8400-e29b-41d4-a716-446655440001', 'Lunch Thalis', 'Express lunch meals', 'Quick and filling meals for the afternoon rush.', true, '12:00:00', '16:00:00'),
+(3, '550e8400-e29b-41d4-a716-446655440001', 'Evening Chaat', 'Chaat and street bites', 'Perfect spicy snacks for evening cravings.', true, '16:00:00', '20:00:00'),
+(4, '550e8400-e29b-41d4-a716-446655440001', 'Late Night Bites', 'Midnight munchies', 'Parathas and rolls for the night owls.', true, '22:00:00', '02:00:00'),
+(5, '550e8400-e29b-41d4-a716-446655440002', 'Royal Shahi Lunch', 'The premium royal daytime spread', 'Biryanis and rich cashew gravies engineered for fine dining.', true, '12:00:00', '16:00:00'),
+(6, '550e8400-e29b-41d4-a716-446655440002', 'Nizami Dinner', 'Late night kebabs and curries', 'Rich dinner spread for the royal palate.', true, '19:00:00', '23:59:00'),
+(7, '550e8400-e29b-41d4-a716-446655440002', 'Weekend Specials', 'Exotic weekend only items', 'Haleem and special biryanis available Saturday/Sunday.', true, '12:00:00', '23:59:00'),
+(8, '550e8400-e29b-41d4-a716-446655440003', 'Aamchi Mumbai Breakfast', 'Quick transit bites', 'Classic fast-moving local breakfast favorites like Vada Pav.', true, '07:30:00', '11:30:00'),
+(9, '550e8400-e29b-41d4-a716-446655440003', 'Coastal Lunch Fare', 'Malvani and Konkani curries', 'Spicy coconut based curries and fresh catch.', true, '12:30:00', '15:30:00'),
+(10, '550e8400-e29b-41d4-a716-446655440003', 'Street Food Dinners', 'Pav bhaji and misal', 'Heavy street food dinners for the family.', true, '18:30:00', '23:00:00');
+
+-- 15 CATEGORIES (Mapped to the 10 menus above)
+INSERT INTO public.categories (id, menu_id, name, short_desc, display_order, is_active) VALUES
+(1, 1, 'Stuffed Parathas', 'Heavy breads', 1, true),
+(2, 1, 'Hot Beverages', 'Morning teas & coffees', 2, true),
+(3, 2, 'Executive Thalis', 'Set lunch meals', 1, true),
+(4, 3, 'Spicy Chaat', 'Tangy snacks', 1, true),
+(5, 4, 'Midnight Rolls', 'Kathi rolls', 1, true),
+(6, 5, 'Dum Biryani', 'Slow cooked rice', 1, true),
+(7, 5, 'Rich Gravies', 'Cashew/Tomato bases', 2, true),
+(8, 6, 'Charcoal Kebabs', 'Grilled starters', 1, true),
+(9, 6, 'Breads', 'Naan & Roti', 2, true),
+(10, 7, 'Haleem Specials', 'Slow cooked meat stew', 1, true),
+(11, 8, 'Pav Items', 'Bread based snacks', 1, true),
+(12, 8, 'Poha & Upma', 'Light breakfast', 2, true),
+(13, 9, 'Fish Curries', 'Coastal seafood', 1, true),
+(14, 9, 'Rice Plates', 'Curry and rice sets', 2, true),
+(15, 10, 'Bhaji Variants', 'Mashed vegetable curries', 1, true);
+
+-- 25 MENU ITEMS (Distributed across the 15 categories)
+INSERT INTO public.menue_items (id, category_id, name, short_desc, long_desc, base_price, is_available, is_veg, spice_level, prep_time) VALUES
+(1, 1, 'Aloo Paratha', 'Potato stuffed', 'Classic potato paratha served with butter.', 80, true, true, 'Mild', 15),
+(2, 1, 'Paneer Paratha', 'Cottage cheese stuffed', 'Rich paneer stuffed paratha.', 100, true, true, 'Mild', 15),
+(3, 2, 'Masala Chai', 'Spiced tea', 'Strong morning tea.', 30, true, true, 'None', 5),
+(4, 3, 'Veg Deluxe Thali', 'Full meal', 'Dal, 2 sabzis, roti, rice, sweet.', 180, true, true, 'Medium', 10),
+(5, 4, 'Aloo Tikki Chaat', 'Potato patties', 'Crispy patties with yogurt and chutney.', 90, true, true, 'Medium', 10),
+(6, 4, 'Papdi Chaat', 'Crispy wafers', 'Wafers with potatoes, chickpeas, chutneys.', 80, true, true, 'Medium', 10),
+(7, 5, 'Egg Chicken Roll', 'Heavy wrap', 'Flaky paratha with egg and chicken.', 120, true, false, 'Medium', 15),
+(8, 6, 'Chicken Dum Biryani', 'Classic chicken rice', 'Aged basmati cooked with tender chicken.', 250, true, false, 'Medium', 20),
+(9, 6, 'Mutton Dum Biryani', 'Classic mutton rice', 'Rich mutton biryani slow cooked for hours.', 350, true, false, 'High', 25),
+(10, 7, 'Butter Chicken', 'Tomato gravy', 'Creamy rich tomato based chicken curry.', 280, true, false, 'Mild', 20),
+(11, 8, 'Chicken Tikka', 'Grilled chicken', 'Boneless chicken marinated and grilled.', 220, true, false, 'Medium', 20),
+(12, 8, 'Mutton Seekh Kebab', 'Minced meat skewer', 'Spiced minced mutton grilled on skewers.', 290, true, false, 'High', 20),
+(13, 9, 'Garlic Naan', 'Garlic flatbread', 'Refined flour bread with garlic and butter.', 50, true, true, 'None', 10),
+(14, 10, 'Mutton Haleem', 'Meat and wheat stew', 'Pounded meat cooked overnight with spices.', 300, true, false, 'Medium', 30),
+(15, 11, 'Vada Pav', 'Potato slider', 'Classic Mumbai street food.', 40, true, true, 'High', 5),
+(16, 11, 'Misal Pav', 'Spicy sprout curry', 'Sprouts curry served with pav.', 70, true, true, 'Very High', 10),
+(17, 12, 'Kanda Poha', 'Onion flattened rice', 'Light and healthy beaten rice snack.', 50, true, true, 'Mild', 10),
+(18, 13, 'Surmai Curry', 'Kingfish curry', 'Spicy coconut and tamarind fish curry.', 380, true, false, 'High', 20),
+(19, 13, 'Prawns Koliwada', 'Fried prawns', 'Spicy deep fried prawns.', 420, true, false, 'Medium', 15),
+(20, 14, 'Fish Thali', 'Complete seafood meal', 'Fish fry, curry, rice, sol kadhi.', 450, true, false, 'High', 15),
+(21, 15, 'Pav Bhaji', 'Mashed veg curry', 'Mixed vegetables mashed on a hot tawa.', 120, true, true, 'Medium', 15),
+(22, 15, 'Cheese Pav Bhaji', 'Cheesy mashed veg', 'Classic pav bhaji loaded with processed cheese.', 150, true, true, 'Medium', 15),
+(23, 1, 'Gobi Paratha', 'Cauliflower stuffed', 'Spiced cauliflower paratha.', 90, true, true, 'Medium', 15),
+(24, 6, 'Veg Biryani', 'Spiced vegetable rice', 'Basmati rice cooked with mixed vegetables.', 200, true, true, 'Medium', 20),
+(25, 2, 'Filter Coffee', 'South Indian coffee', 'Strong milk coffee.', 40, true, true, 'None', 5);
+
+-- 25 ITEM AVAILABILITY (1-to-1 matching with items)
+INSERT INTO public.item_availability (id, item_id, available_from, available_until, is_active) VALUES
+(1, 1, '08:00:00', '12:00:00', true),
+(2, 2, '08:00:00', '12:00:00', true),
+(3, 3, '08:00:00', '12:00:00', true),
+(4, 4, '12:00:00', '16:00:00', true),
+(5, 5, '16:00:00', '20:00:00', true),
+(6, 6, '16:00:00', '20:00:00', true),
+(7, 7, '22:00:00', '02:00:00', true),
+(8, 8, '12:00:00', '16:00:00', true),
+(9, 9, '12:00:00', '16:00:00', true),
+(10, 10, '12:00:00', '16:00:00', true),
+(11, 11, '19:00:00', '23:59:00', true),
+(12, 12, '19:00:00', '23:59:00', true),
+(13, 13, '19:00:00', '23:59:00', true),
+(14, 14, '12:00:00', '23:59:00', true),
+(15, 15, '07:30:00', '11:30:00', true),
+(16, 16, '07:30:00', '11:30:00', true),
+(17, 17, '07:30:00', '11:30:00', true),
+(18, 18, '12:30:00', '15:30:00', true),
+(19, 19, '12:30:00', '15:30:00', true),
+(20, 20, '12:30:00', '15:30:00', true),
+(21, 21, '18:30:00', '23:00:00', true),
+(22, 22, '18:30:00', '23:00:00', true),
+(23, 23, '08:00:00', '12:00:00', true),
+(24, 24, '12:00:00', '16:00:00', true),
+(25, 25, '08:00:00', '12:00:00', true);
+
+-- 10 VARIANTS
+INSERT INTO public.variants (id, name, description, is_active) VALUES
+(1, 'Portion Size', 'Size of the serving', true),
+(2, 'Spice Level', 'How hot do you want it', true),
+(3, 'Bread Choice', 'Type of bread', true),
+(4, 'Preparation', 'Cooking style', true),
+(5, 'Egg Choice', 'Number of eggs', true),
+(6, 'Meat Cut', 'Boneless or Bone-in', true),
+(7, 'Sweetness', 'Sugar level', true),
+(8, 'Butter Level', 'Amount of butter', true),
+(9, 'Cheese Type', 'Type of cheese', true),
+(10, 'Cooking Oil', 'Type of oil used', true);
+
+-- 20 VARIANT OPTIONS
+INSERT INTO public.variant_options (id, variant_id, name, price_modifier, display_order) VALUES
+(1, 1, 'Half', 0, 1),
+(2, 1, 'Full', 100, 2),
+(3, 1, 'Family Pack', 250, 3),
+(4, 2, 'Mild', 0, 1),
+(5, 2, 'Medium', 0, 2),
+(6, 2, 'Extra Spicy', 10, 3),
+(7, 3, 'Whole Wheat', 0, 1),
+(8, 3, 'Refined Flour', 0, 2),
+(9, 4, 'Tawa Fry', 0, 1),
+(10, 4, 'Deep Fry', 15, 2),
+(11, 5, 'Single Egg', 15, 1),
+(12, 5, 'Double Egg', 30, 2),
+(13, 6, 'Bone-in', 0, 1),
+(14, 6, 'Boneless', 40, 2),
+(15, 7, 'Less Sugar', 0, 1),
+(16, 7, 'Normal Sugar', 0, 2),
+(17, 8, 'Regular Butter', 0, 1),
+(18, 8, 'Extra Amul Butter', 20, 2),
+(19, 9, 'Processed Cheese', 30, 1),
+(20, 9, 'Mozzarella', 50, 2);
+
+-- 20 ITEM VARIANTS
+INSERT INTO public.item_variants (id, item_id, variant_id, is_required) VALUES
+(1, 8, 1, true),
+(2, 9, 1, true),
+(3, 10, 2, false),
+(4, 11, 2, true),
+(5, 7, 5, true),
+(6, 12, 6, true),
+(7, 18, 4, true),
+(8, 19, 4, true),
+(9, 3, 7, true),
+(10, 25, 7, true),
+(11, 1, 8, false),
+(12, 2, 8, false),
+(13, 21, 8, false),
+(14, 22, 9, false),
+(15, 15, 2, true),
+(16, 16, 2, true),
+(17, 24, 1, true),
+(18, 14, 1, true),
+(19, 13, 8, false),
+(20, 4, 3, true);
+
+-- 12 ADDONS
+INSERT INTO public.addons (id, name, description, is_active) VALUES
+(1, 'Extra Chutney', 'Mint and coriander dip', true),
+(2, 'Extra Raita', 'Yogurt side', true),
+(3, 'Extra Pav', 'Pair of bread rolls', true),
+(4, 'Salad Plate', 'Onion and cucumber', true),
+(5, 'Roasted Papad', 'Roasted lentil wafer', true),
+(6, 'Fried Papad', 'Fried lentil wafer', true),
+(7, 'Extra Sambhar', 'Lentil stew', true),
+(8, 'Extra Cheese', 'Grated cheese', true),
+(9, 'Boiled Egg', 'Single boiled egg', true),
+(10, 'Mirchi Ka Salan', 'Peanut and chili gravy', true),
+(11, 'Sweet Pan', 'Mouth freshener', true),
+(12, 'Extra Butter', 'Dollop of butter', true);
+
+-- 25 ITEM ADDONS
+INSERT INTO public.item_addons (id, item_id, addon_id, price, is_required, max_quantity, min_quantity) VALUES
+(1, 1, 1, 10, 0, 2, 0),
+(2, 2, 1, 10, 0, 2, 0),
+(3, 5, 1, 10, 0, 2, 0),
+(4, 6, 1, 10, 0, 2, 0),
+(5, 8, 2, 30, 0, 3, 0),
+(6, 9, 2, 30, 0, 3, 0),
+(7, 24, 2, 30, 0, 3, 0),
+(8, 8, 10, 40, 0, 2, 0),
+(9, 9, 10, 40, 0, 2, 0),
+(10, 15, 3, 15, 0, 4, 0),
+(11, 16, 3, 15, 0, 4, 0),
+(12, 21, 3, 15, 0, 4, 0),
+(13, 22, 3, 15, 0, 4, 0),
+(14, 21, 8, 30, 0, 1, 0),
+(15, 1, 12, 15, 0, 2, 0),
+(16, 2, 12, 15, 0, 2, 0),
+(17, 4, 5, 10, 0, 2, 0),
+(18, 4, 6, 15, 0, 2, 0),
+(19, 20, 4, 20, 0, 1, 0),
+(20, 11, 4, 20, 0, 1, 0),
+(21, 12, 4, 20, 0, 1, 0),
+(22, 8, 11, 25, 0, 1, 0),
+(23, 9, 11, 25, 0, 1, 0),
+(24, 7, 9, 20, 0, 2, 0),
+(25, 14, 4, 20, 0, 1, 0);
+
+COMMIT;
+
+-- -----------------------------------------------------------------------------
+-- 5. DYNAMIC SEQUENCE RESETS
+-- -----------------------------------------------------------------------------
+
+SELECT pg_catalog.setval('public.restaurant_addresses_id_seq', (SELECT MAX(id) FROM public.restaurant_addresses), true);
+SELECT pg_catalog.setval('public.restaurant_hours_id_seq', (SELECT MAX(id) FROM public.restaurant_hours), true);
+SELECT pg_catalog.setval('public.menu_id_seq', (SELECT MAX(id) FROM public.menu), true);
+SELECT pg_catalog.setval('public.categories_id_seq', (SELECT MAX(id) FROM public.categories), true);
+SELECT pg_catalog.setval('public.menue_items_id_seq', (SELECT MAX(id) FROM public.menue_items), true);
+SELECT pg_catalog.setval('public.item_availability_id_seq', (SELECT MAX(id) FROM public.item_availability), true);
+SELECT pg_catalog.setval('public.variants_id_seq', (SELECT MAX(id) FROM public.variants), true);
+SELECT pg_catalog.setval('public.variant_options_id_seq', (SELECT MAX(id) FROM public.variant_options), true);
+SELECT pg_catalog.setval('public.item_variants_id_seq', (SELECT MAX(id) FROM public.item_variants), true);
+SELECT pg_catalog.setval('public.addons_id_seq', (SELECT MAX(id) FROM public.addons), true);
+SELECT pg_catalog.setval('public.item_addons_id_seq', (SELECT MAX(id) FROM public.item_addons), true);

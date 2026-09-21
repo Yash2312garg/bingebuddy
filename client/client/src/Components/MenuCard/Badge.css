@@ -1,0 +1,15 @@
+.Badge-cntr{
+    display:block;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    border-radius: 8px;
+}
+.Badge-cntr.active{ 
+    background-color:var( --Success-Color) ;
+}   
+
+.Badge-cntr.inactive{ 
+    background-color:var(  --Trace-Grey-Color) ;
+    color: var( --Secondary-Text-Color)
+}   

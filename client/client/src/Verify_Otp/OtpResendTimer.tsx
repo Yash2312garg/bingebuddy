@@ -7,6 +7,10 @@ const OtpResendTimer: React.FC<OtpResendTimerProps> = ({
   const [timeLeft, setTimeLeft] = useState(initialTime);
   const [canResend, setCanResend] = useState<boolean>(false);
   const timeRef = useRef<ReturnType<typeof setInterval>>(null);
+    useEffect(() => {
+    setTimeLeft(initialTime);
+    setCanResend(initialTime <= 0);
+  }, [initialTime]);
 
   useEffect(() => {
     if (timeLeft > 0) {

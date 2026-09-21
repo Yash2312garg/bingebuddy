@@ -1,58 +1,67 @@
 
-.Side-bar-wrapper{
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
-    flex-direction: column;
-    gap: 2px;
-    height:100vh;
-    box-sizing: border-box; 
-    width: 20vw;
-    min-width: 200px;
-    border-bottom: 1px solid var(--Trace-Grey-Color);
-    min-width: fit-content;
-    
-    
-}
-.Sidebar-header{
-    border-bottom: 1px solid var(--Trace-Grey-Color);
-    width: 100%;
-    padding: 10px 20px;
-    box-sizing: border-box;
+/* =========================
+   SIDEBAR
+   ========================= */
 
-    border-right: 1px solid var(--Trace-Grey-Color);
-}
-.Sidebar-header p{
-    font-size: 14px;
-    font-weight: 500;
-    margin: 0px;
-    padding-left: 4px;
-    color: var(--Secondary-Text-Color);
+.Side-bar-wrapper {
+  display: flex;
+  flex-direction: column;
+
+  width: 240px;
+  min-width: 240px;
+  height: 100vh;
+
+  box-sizing: border-box;
+
+  background-color: #ffffff;
+
+  border-right: 1px solid var(--Trace-Grey-Color);
+
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.06);
 }
 
-.Side-bar-Menu-options{
-      display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
-    flex-direction: column;
-    gap: 10px;
-    height: 100%;
-    width: 100%;
-    box-sizing: border-box;
 
-    padding: 10px 20px;
-    color: var( --Primary-Text-Color);
-    border-bottom: 1px solid var(--Trace-Grey-Color);
-    border-right: 1px solid var(--Trace-Grey-Color);
-}
-.Side-bar-menu-option{
-    padding: 10px 10px;
-    width: 100%;
-    box-sizing: border-box;
+/* =========================
+   SIDEBAR HEADER
+   ========================= */
 
-    border-radius: 8px;
+.Sidebar-header {
+  flex-shrink: 0;
+
+  width: 100%;
+
+  padding: 14px 20px;
+
+  box-sizing: border-box;
+
+  border-bottom: 1px solid var(--Trace-Grey-Color);
 }
-.Side-bar-menu-option:hover{
-    background-color: var(--Brand-Primary-Colors);
-    color: #fff;
+
+.Sidebar-header p {
+  margin: 0;
+  padding-left: 4px;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  color: var(--Secondary-Text-Color);
 }
+
+
+/* =========================
+   SIDEBAR MENU AREA
+   ========================= */
+
+.Side-bar-Menu-options {
+  flex: 1;
+
+  width: 100%;
+  min-height: 0;
+
+  box-sizing: border-box;
+
+  padding: 12px;
+
+  overflow-y: auto;
+}
+

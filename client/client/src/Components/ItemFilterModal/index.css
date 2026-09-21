@@ -1,0 +1,127 @@
+.FilterModal-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.FilterModal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.FilterModal-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--Primary-Text-Color);
+  letter-spacing: 0.01em;
+}
+
+.FilterModal-divider {
+  height: 1px;
+  background-color: var(--Trace-Grey-Color);
+  margin: 4px 0;
+}
+
+/* 1. Segmented Control Toggle Pill */
+.SegmentedControl {
+  display: flex;
+  background-color: var(--Card_Input-Background-Color);
+  padding: 4px;
+  border-radius: 10px;
+  gap: 4px;
+}
+
+.SegmentedControl-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--Secondary-Text-Color);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+  text-align: center;
+}
+
+.SegmentedControl-btn:hover:not(.active) {
+  color: var(--Primary-Text-Color);
+}
+
+.SegmentedControl-btn.active {
+  background-color: #ffffff;
+  color: var(--Brand-Primary-Colors);
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(var(--Primary-Text-Color-rgb), 0.08);
+}
+
+/* 2. Interactive Sort Cards */
+.SortGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.SortCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--Trace-Grey-Color);
+  background-color: var(--Main-Background-Color);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.SortCard:hover {
+  border-color: var(--Brand-Primary-Colors);
+}
+
+.SortCard.selected {
+  border-color: var(--Brand-Primary-Colors);
+  background-color: rgba(112, 0, 255, 0.04);
+}
+
+.SortCard-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.SortCard-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--Primary-Text-Color);
+}
+
+.SortCard.selected .SortCard-title {
+  color: var(--Brand-Primary-Colors);
+}
+
+.SortCard-subtitle {
+  font-size: 0.74rem;
+  color: var(--Secondary-Text-Color);
+}
+
+.SortCard-icon {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--Secondary-Text-Color);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.SortCard.selected .SortCard-icon {
+  background-color: var(--Brand-Primary-Colors);
+  color: #ffffff;
+}

@@ -15,11 +15,11 @@ const Btn: React.FC<ButtonProps> = ({
   const getClassNames = () => {
     return [
       "btn",
+      className,
       variant.toLowerCase(),
       size.toLowerCase(),
       status.toLowerCase(),
       disabled ? "disabled" : "",
-      className,
     ]
       .filter(Boolean)
       .join(" ");

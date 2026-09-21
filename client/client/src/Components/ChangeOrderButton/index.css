@@ -1,0 +1,12 @@
+.ChangeOrderButton-wrpr{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+.btn.ChangeOrderButton-btn{
+    padding: 8px;
+    width: fit-content;
+   background-color: var(--Card_Input-Background-Color);
+}

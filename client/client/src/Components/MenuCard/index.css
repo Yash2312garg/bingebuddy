@@ -1,0 +1,97 @@
+.MenuCard-cntr {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+
+  padding: 20px;
+  border-radius: 16px;
+
+  background-color: var(--information-color);
+}
+.MenuCard-cntr:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.MenuCard-actn-btn-cntr {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.MenuCard-name {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--Primary-Text-Color);
+}
+
+.MenuCard-name.active {
+  color: var(--Secondary-Text-Color);
+}
+
+.MenuCard-cntr-desc,
+.MenuCard-cntr-time {
+  font-size: 0.8rem;
+  color: var(--Secondary-Text-Color);
+}
+
+.MenuCard-cntr-time {
+  display: inline-flex;
+  align-items: center;
+  text-align: center;
+}
+
+.MenuCard-cntr-time img,
+.MenuCard-actn-btn-cntr img {
+  width: 16px;
+  height: 16px;
+}
+
+.MenuCard-cntr-time img {
+  padding-right: 4px;
+}
+
+/* =========================================
+   Action Buttons
+========================================= */
+
+.btn.MenuCard-actn-btn-deactivate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+    font-size: 0.9rem;
+  background-color: var(--muted-Grey-color);
+  color: #000;
+  width: 120px;
+}
+
+.btn.MenuCard-actn-btn-deactivate:not(:disabled):hover {
+  background-color: var(--muted-Grey-color);
+  color: #000;
+}
+
+/* Fake disabled state */
+
+.btn.MenuCard-actn-btn-deactivate.deactive,
+.btn.MenuCard-actn-btn-deactivate.deactive:hover {
+  background-color:var(  --Trace-Grey-Color) ;
+  color: var( --Secondary-Text-Color)
+  /* opacity: 0.7; */
+}
+
+/* Edit & Delete */
+
+.btn.MenuCard-actn-btn-edit,
+.btn.MenuCard-actn-btn-delete {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.btn.MenuCard-actn-btn-delete {
+  background-color: var(--Error-color);
+}
+
+.btn.MenuCard-actn-btn-delete:not(:disabled):hover {
+  background-color: var(--Error-color-hover);
+}

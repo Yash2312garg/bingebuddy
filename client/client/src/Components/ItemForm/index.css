@@ -1,0 +1,58 @@
+.Items-Form-cntr{
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: 100%;
+    gap:20px;
+    flex-direction: column;
+}
+.Item-First-Part{
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: 100%;
+    gap:20px;
+    flex-direction: row;
+}
+.Item-Second-Part{
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: 100%;
+    gap:20px;
+    flex-direction: row;
+}
+.Item-varients-inputs{
+    display: flex;
+    align-items: start;
+    justify-content: center;
+    width: 100%;
+    flex-direction: column;
+    background-color: var(  --Card_Input-Background-Color);
+    padding: 20px;
+    border-radius: 16px;
+    border: 1px solid var(--Trace-Grey-Color);
+    box-sizing: border-box;
+    gap: 10px;
+}
+.Item-varients-inputs > h3 {
+    font-weight: 700 ;
+    font-size: 1.2rem ;
+    color: var(  --Primary-Text-Color);
+    margin: 0;
+}
+.Item-varients-inputs > p {
+    font-weight: 500 ;
+    font-size: 0.8rem ;
+    color: var(  --Secondary-Text-Color);
+    margin: 0;
+}
+.Item-action-btn{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    width: 100%;
+    flex-direction: row;
+}
