@@ -25,7 +25,7 @@ spec:
             - name: POSTGRES_USER
               value: "authadmin"
             - name: POSTGRES_PASSWORD
-              value: "admin123"
+              value: "authadmin123"
           ports:
             - containerPort: 5432
           resources:

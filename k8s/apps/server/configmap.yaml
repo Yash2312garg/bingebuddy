@@ -24,5 +24,8 @@ data:
   # Redis
   REDIS_HOST: "redis"
   REDIS_PORT: "6379"
+  REDIS_URL: "redis://redis:6379"
+  AWS_S3_REGION: "us-east-1"
+  AWS_S3_BUCKET: "bingebuddy-uploads"
   # Auth service URL (for token validation)
   AUTH_SERVICE_URL: "http://auth-service:3002"
