@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notification-config
+  namespace: bingebuddy-dev
+  labels:
+    app: notification-service
+    app.kubernetes.io/managed-by: argocd
+data:
+  NODE_ENV: "staging"
+  PORT: "3001"
+  DB_HOST: "notification-postgres"
+  DB_PORT: "5432"
+  DB_NAME: "notifications"
+  DB_USER: "admin"
+  RABBITMQ_URL: "amqp://yash:Yash@123@rabbitmq:5672"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: notification-secrets
+  namespace: bingebuddy-dev
+  labels:
+    app: notification-service
+    app.kubernetes.io/managed-by: argocd
+type: Opaque
+data:
+  # echo -n "admin123" | base64
+  DB_PASSWORD: YWRtaW4xMjM=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: bingebuddy-dev
+  labels:
+    app: notification-service
+    app.kubernetes.io/managed-by: argocd
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: notification-service
+          # ⚠️ GitHub Actions CI updates this tag automatically
+          image: ghcr.io/yash2312garg/bingebuddy-notification-service:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3001
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: notification-config
+            - secretRef:
+                name: notification-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: bingebuddy-dev
+  labels:
+    app: notification-service
+    app.kubernetes.io/managed-by: argocd
+spec:
+  type: ClusterIP
+  selector:
+    app: notification-service
+  ports:
+    - name: http
+      port: 3001
+      targetPort: 3001
+      protocol: TCP

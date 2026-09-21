@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config
+  namespace: bingebuddy-dev
+  labels:
+    app: auth-service
+    app.kubernetes.io/managed-by: argocd
+data:
+  NODE_ENV: "staging"
+  PORT: "3002"
+  DB_HOST: "auth-postgres"
+  DB_PORT: "5432"
+  DB_NAME: "auth"
+  DB_USER: "authadmin"

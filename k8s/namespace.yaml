@@ -1,0 +1,14 @@
+# ============================================================
+# BingeBuddy — Kubernetes Namespace
+#
+# All BingeBuddy resources live in this namespace.
+# Keeps the cluster tidy and separates our app from
+# system components (kube-system, argocd, etc.)
+# ============================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bingebuddy-dev
+  labels:
+    app.kubernetes.io/managed-by: argocd
+    environment: staging

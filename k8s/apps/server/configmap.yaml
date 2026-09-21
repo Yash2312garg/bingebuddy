@@ -1,0 +1,28 @@
+# ============================================================
+# server — ConfigMap
+# Non-sensitive environment variables for the main app service.
+# Sensitive values (DB passwords, JWT secrets) go in secret.yaml
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: server-config
+  namespace: bingebuddy-dev
+  labels:
+    app: server
+    app.kubernetes.io/managed-by: argocd
+data:
+  NODE_ENV: "staging"
+  PORT: "3000"
+  # Database — connects to postgres service inside the cluster
+  DB_HOST: "server-postgres"
+  DB_PORT: "5432"
+  DB_NAME: "bingebuddy"
+  DB_USER: "yash"
+  # RabbitMQ — connects to rabbitmq service inside the cluster
+  RABBITMQ_URL: "amqp://yash:Yash@123@rabbitmq:5672"
+  # Redis
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  # Auth service URL (for token validation)
+  AUTH_SERVICE_URL: "http://auth-service:3002"

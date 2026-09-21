@@ -1,0 +1,38 @@
+# ============================================================
+# BingeBuddy — kind Cluster Configuration
+#
+# Creates a 2-node cluster:
+#   - control-plane: runs K8s control plane + nginx-ingress
+#   - worker: runs all application pods
+#
+# Usage:
+#   kind create cluster --config k8s/kind-config.yaml
+# ============================================================
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: bingebuddy-cluster
+
+nodes:
+  # ── Control Plane ──────────────────────────────────────────
+  # Hosts the nginx-ingress controller so port 80/443
+  # on your Mac routes directly into the cluster.
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      # HTTP — e.g. http://bingebuddy.local
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      # HTTPS (future TLS)
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+
+  # ── Worker ─────────────────────────────────────────────────
+  # Runs all BingeBuddy application pods
+  - role: worker

@@ -1,0 +1,48 @@
+# ============================================================
+# ArgoCD — Application CRD
+#
+# This tells ArgoCD:
+#   1. WHAT to deploy: the k8s/ directory in your repo
+#   2. WHERE to deploy: bingebuddy-dev namespace in the local cluster
+#   3. WHEN to sync: automatically (on every git change)
+#
+# Apply this ONCE after ArgoCD is installed:
+#   kubectl apply -f k8s/argocd/application.yaml
+# ============================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bingebuddy-staging
+  namespace: argocd          # ArgoCD always lives in the argocd namespace
+  labels:
+    environment: staging
+  # IMPORTANT: This ensures the ArgoCD app is deleted when you
+  # delete this manifest (cascade delete). Remove if you want
+  # ArgoCD to survive manifest deletion.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  # ── Source ──────────────────────────────────────────────────
+  # ArgoCD watches this git repo + branch + path
+  source:
+    repoURL: https://github.com/Yash2312garg/bingebuddy
+    targetRevision: stage          # watches the stage branch
+    path: k8s                      # deploys everything in k8s/ directory
+
+  # ── Destination ─────────────────────────────────────────────
+  # Deploy into the local kind cluster
+  destination:
+    server: https://kubernetes.default.svc   # "this cluster"
+    namespace: bingebuddy-dev
+
+  # ── Sync Policy ─────────────────────────────────────────────
+  syncPolicy:
+    automated:
+      prune: true      # delete K8s resources removed from git
+      selfHeal: true   # revert manual kubectl changes back to git state
+    syncOptions:
+      - CreateNamespace=true    # auto-create bingebuddy-dev if missing
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true          # delete old resources AFTER new ones are ready

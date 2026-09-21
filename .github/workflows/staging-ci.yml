@@ -1,0 +1,203 @@
+# ============================================================
+# BingeBuddy — Staging CI Pipeline
+#
+# Triggers on: push to `stage` branch
+#
+# Responsibilities:
+#   1. Build Docker images for all 4 services
+#   2. Push images to GHCR (GitHub Container Registry)
+#   3. Update image tags in k8s manifests (GitOps commit)
+#
+# ArgoCD (running in your local kind cluster) then:
+#   - Detects the manifest change in git
+#   - Pulls the new image
+#   - Does a rolling update (zero downtime)
+#
+# NO deploy step here — ArgoCD handles that via pull-based GitOps.
+# ============================================================
+name: Staging CI — Build & Push Images
+
+on:
+  push:
+    branches:
+      - stage
+    # Only trigger if relevant files change (skip if only docs changed)
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+
+env:
+  REGISTRY: ghcr.io
+  # Your GitHub username (lowercase required for GHCR)
+  IMAGE_PREFIX: ghcr.io/yash2312garg
+
+jobs:
+  # ────────────────────────────────────────────────────────────
+  # Job 1: Build & Push all Docker images
+  # ────────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    # Required permissions for pushing to GHCR
+    permissions:
+      contents: read
+      packages: write
+
+    # Output the image tags so the next job can use them
+    outputs:
+      server-tag: ${{ steps.meta-server.outputs.version }}
+      auth-tag: ${{ steps.meta-auth.outputs.version }}
+      notification-tag: ${{ steps.meta-notification.outputs.version }}
+      client-tag: ${{ steps.meta-client.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # auto-provided by GitHub
+
+      # ── server ──────────────────────────────────────────────
+      - name: Extract metadata for server
+        id: meta-server
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/bingebuddy-server
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push server
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta-server.outputs.tags }}
+          labels: ${{ steps.meta-server.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── auth-service ─────────────────────────────────────────
+      - name: Extract metadata for auth-service
+        id: meta-auth
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/bingebuddy-auth-service
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push auth-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./auth-service
+          file: ./auth-service/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta-auth.outputs.tags }}
+          labels: ${{ steps.meta-auth.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── notification-service ─────────────────────────────────
+      - name: Extract metadata for notification-service
+        id: meta-notification
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/bingebuddy-notification-service
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push notification-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./notification-service
+          file: ./notification-service/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta-notification.outputs.tags }}
+          labels: ${{ steps.meta-notification.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── client ───────────────────────────────────────────────
+      - name: Extract metadata for client
+        id: meta-client
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/bingebuddy-client
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push client
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client/client
+          file: ./client/client/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta-client.outputs.tags }}
+          labels: ${{ steps.meta-client.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ────────────────────────────────────────────────────────────
+  # Job 2: GitOps Commit — Update image tags in k8s manifests
+  # ArgoCD watches these manifests and auto-deploys on change.
+  # ────────────────────────────────────────────────────────────
+  update-manifests:
+    name: Update K8s Manifests (GitOps)
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: write   # needed to push the manifest update commit
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Update server image tag
+        run: |
+          sed -i "s|ghcr.io/yash2312garg/bingebuddy-server:.*|ghcr.io/yash2312garg/bingebuddy-server:${{ steps.sha.outputs.short }}|g" \
+            k8s/apps/server/deployment.yaml
+
+      - name: Update auth-service image tag
+        run: |
+          sed -i "s|ghcr.io/yash2312garg/bingebuddy-auth-service:.*|ghcr.io/yash2312garg/bingebuddy-auth-service:${{ steps.sha.outputs.short }}|g" \
+            k8s/apps/auth-service/deployment.yaml
+
+      - name: Update notification-service image tag
+        run: |
+          sed -i "s|ghcr.io/yash2312garg/bingebuddy-notification-service:.*|ghcr.io/yash2312garg/bingebuddy-notification-service:${{ steps.sha.outputs.short }}|g" \
+            k8s/apps/notification-service/deployment.yaml
+
+      - name: Update client image tag
+        run: |
+          sed -i "s|ghcr.io/yash2312garg/bingebuddy-client:.*|ghcr.io/yash2312garg/bingebuddy-client:${{ steps.sha.outputs.short }}|g" \
+            k8s/apps/client/deployment.yaml
+
+      - name: Commit and push manifest updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/apps/*/deployment.yaml
+          git diff --staged --quiet || git commit -m "ci: update image tags to ${{ steps.sha.outputs.short }} [skip ci]"
+          git push
+        # [skip ci] prevents this commit from re-triggering the pipeline

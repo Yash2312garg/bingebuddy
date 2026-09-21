@@ -1,0 +1,25 @@
+# ============================================================
+# server — Service (ClusterIP)
+# Gives the server pods a stable internal DNS name.
+# Other pods can reach the server at: http://server:3000
+#
+# ClusterIP = internal only (not exposed outside the cluster).
+# External traffic comes in via the Ingress → this Service.
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: server
+  namespace: bingebuddy-dev
+  labels:
+    app: server
+    app.kubernetes.io/managed-by: argocd
+spec:
+  type: ClusterIP
+  selector:
+    app: server   # routes to pods with this label
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
