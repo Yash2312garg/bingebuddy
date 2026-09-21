@@ -22,6 +22,8 @@ spec:
         app: auth-service
     spec:
       terminationGracePeriodSeconds: 30
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: auth-service
           # ⚠️ GitHub Actions CI updates this tag automatically

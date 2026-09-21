@@ -22,6 +22,8 @@ spec:
         app: client
     spec:
       terminationGracePeriodSeconds: 10
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: client
           # ⚠️ GitHub Actions CI updates this tag automatically

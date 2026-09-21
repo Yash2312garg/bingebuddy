@@ -36,6 +36,8 @@ spec:
     spec:
       # Wait for pods to terminate gracefully
       terminationGracePeriodSeconds: 30
+      imagePullSecrets:
+        - name: ghcr-secret   # kubectl create secret docker-registry ghcr-secret ...
       containers:
         - name: server
           # ⚠️ GitHub Actions CI updates this tag automatically
