@@ -16,8 +16,7 @@ metadata:
     app: server
     app.kubernetes.io/managed-by: argocd
   annotations:
-    # ArgoCD tracks this for rollback
-    deployment.kubernetes.io/revision: "1"
+    # Removed hardcoded revision to fix ArgoCD OutOfSync
 spec:
   replicas: 1
   # Zero-downtime rolling update strategy
