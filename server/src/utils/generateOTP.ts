@@ -4,7 +4,7 @@ import type {  OTPConfig, RateLimitConfigs } from './Types';
 import { OtpDao } from "../dao/otp.dao";
 
 import type { Request} from "express";
-import bcrypt from "bcrypt"
+import bcrypt from "bcryptjs"
 
 
 export const OTP_CONFIG: OTPConfig = {
