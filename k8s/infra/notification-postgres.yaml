@@ -26,6 +26,9 @@ spec:
               value: "admin"
             - name: POSTGRES_PASSWORD
               value: "admin123"
+          volumeMounts:
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
           ports:
             - containerPort: 5432
           resources:
@@ -35,6 +38,10 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+      volumes:
+        - name: init-script
+          configMap:
+            name: notification-postgres-init
 ---
 apiVersion: v1
 kind: Service
