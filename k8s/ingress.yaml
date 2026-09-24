@@ -15,7 +15,6 @@ metadata:
     nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
 spec:
   rules:
-    - host: bingebuddy.local
       http:
         paths:
           - path: /auth
@@ -61,7 +60,6 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
 spec:
   rules:
-    - host: bingebuddy.local
       http:
         paths:
           - path: /api/v1/notification
@@ -92,7 +90,6 @@ metadata:
     nginx.ingress.kubernetes.io/auth-response-headers: "X-Session-Identifier, X-Session-Type, X-Session-Generated-At"
 spec:
   rules:
-    - host: bingebuddy.local
       http:
         paths:
           - path: /restaurant/prelogin

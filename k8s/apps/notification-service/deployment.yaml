@@ -63,6 +63,22 @@ spec:
             - name: http
               containerPort: 3001
               protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: notification-config
+                  key: DB_USER
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: notification-config
+                  key: DB_NAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: notification-secrets
+                  key: DB_PASSWORD
           envFrom:
             - configMapRef:
                 name: notification-config
