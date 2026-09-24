@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/tracking-id: bingebuddy-staging:apps/Deployment:bingebuddy-dev/server
+    deployment.kubernetes.io/revision: "11"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"bingebuddy-staging:apps/Deployment:bingebuddy-dev/server","deployment.kubernetes.io/revision":"1"},"labels":{"app":"server","app.kubernetes.io/managed-by":"argocd"},"name":"server","namespace":"bingebuddy-dev"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"server"}},"strategy":{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0},"type":"RollingUpdate"},"template":{"metadata":{"labels":{"app":"server"}},"spec":{"containers":[{"envFrom":[{"configMapRef":{"name":"server-config"}},{"secretRef":{"name":"server-secrets"}}],"image":"ghcr.io/yash2312garg/bingebuddy-server:a35aee2","imagePullPolicy":"Always","livenessProbe":{"failureThreshold":3,"httpGet":{"path":"/health","port":3000},"initialDelaySeconds":30,"periodSeconds":10},"name":"server","ports":[{"containerPort":3000,"name":"http","protocol":"TCP"}],"readinessProbe":{"failureThreshold":3,"httpGet":{"path":"/health","port":3000},"initialDelaySeconds":10,"periodSeconds":5},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":false,"runAsNonRoot":true,"runAsUser":1001}}],"imagePullSecrets":[{"name":"ghcr-secret"}],"terminationGracePeriodSeconds":30}}}}
+  creationTimestamp: "2026-09-21T08:23:34Z"
+  generation: 215
+  labels:
+    app: server
+    app.kubernetes.io/managed-by: argocd
+  name: server
+  namespace: bingebuddy-dev
+  resourceVersion: "77830"
+  uid: 237d559c-56ae-49c8-9dc8-e4617c2b797f
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: server
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "2026-09-21T18:04:59+05:30"
+      labels:
+        app: server
+    spec:
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: server-config
+        - secretRef:
+            name: server-secrets
+        image: ghcr.io/yash2312garg/bingebuddy-server:a35aee2
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: server
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1001
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: ghcr-secret
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2026-09-21T12:58:03Z"
+    lastUpdateTime: "2026-09-21T12:58:03Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2026-09-22T09:35:57Z"
+    lastUpdateTime: "2026-09-22T13:58:01Z"
+    message: ReplicaSet "server-5dff74d7b6" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 215
+  readyReplicas: 1
+  replicas: 1
+  terminatingReplicas: 0
+  updatedReplicas: 1

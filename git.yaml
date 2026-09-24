@@ -1,0 +1,88 @@
+# ============================================================
+# server — Deployment
+# Runs the main BingeBuddy backend (Express/Node.js)
+#
+# Image tag is managed by GitHub Actions CI:
+#   - CI builds and pushes: ghcr.io/yash2312garg/bingebuddy-server:a35aee2
+#   - CI updates this file with the new SHA
+#   - ArgoCD detects the change and syncs the cluster
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+  namespace: bingebuddy-dev
+  labels:
+    app: server
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    # ArgoCD tracks this for rollback
+    deployment.kubernetes.io/revision: "1"
+spec:
+  replicas: 1
+  # Zero-downtime rolling update strategy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # never kill old pod before new one is ready
+      maxSurge: 1         # allow 1 extra pod during rollout
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+    spec:
+      # Wait for pods to terminate gracefully
+      terminationGracePeriodSeconds: 30
+      imagePullSecrets:
+        - name: ghcr-secret   # kubectl create secret docker-registry ghcr-secret ...
+      containers:
+        - name: server
+          # ⚠️ GitHub Actions CI updates this tag automatically
+          image: ghcr.io/yash2312garg/bingebuddy-server:a35aee2
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          # Pull all non-sensitive config from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: server-config
+            - secretRef:
+                name: server-secrets
+          # ── Probes ──────────────────────────────────────────
+          # K8s won't send traffic until this passes
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          # K8s restarts the pod if this fails 3 times
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          # ── Resource Limits ─────────────────────────────────
+          # requests: guaranteed allocation
+          # limits: hard ceiling (pod OOMKilled if exceeded)
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"     # 100 millicores = 0.1 CPU
+            limits:
+              memory: "512Mi"
+              cpu: "500m"     # 500 millicores = 0.5 CPU
+          # ── Security ────────────────────────────────────────
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001   # nodejs user from Dockerfile
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false

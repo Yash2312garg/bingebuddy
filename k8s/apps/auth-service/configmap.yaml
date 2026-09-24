@@ -17,3 +17,4 @@ data:
   REDIS_PORT: "6379"
   REDIS_URL: "redis://redis:6379"
   RABBITMQ_URL: "amqp://yash:Yash@123@rabbitmq:5672"
+  FRONTEND_URL: "http://bingebuddy.local:8080"

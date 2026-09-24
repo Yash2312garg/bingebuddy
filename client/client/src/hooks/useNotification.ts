@@ -20,7 +20,8 @@ export function useNotification(recipientId: string, recipientType: string) {
   useEffect(() => {
     if (!recipientId || !recipientType) return;
 
-    const url: string = `http://localhost:8080/api/v1/notifications/stream?recipientId=${recipientId}&recipientType=${recipientType}`;
+    const baseUrl = import.meta.env.VITE_BASE_URL || '/api/v1';
+    const url: string = `${baseUrl}/notifications/stream?recipientId=${recipientId}&recipientType=${recipientType}`;
     const eventSource = new EventSource(url, { withCredentials: true });
     eventSource.onopen = () => {
       console.log(" Real-time notification stream established.");

@@ -1,0 +1,18 @@
+diff -u -N /var/folders/dp/ckv_5fyj0hsd7qj56bcz44zw0000gp/T/LIVE-3964079730/apps.v1.Deployment.bingebuddy-dev.server /var/folders/dp/ckv_5fyj0hsd7qj56bcz44zw0000gp/T/MERGED-3134000647/apps.v1.Deployment.bingebuddy-dev.server
+--- /var/folders/dp/ckv_5fyj0hsd7qj56bcz44zw0000gp/T/LIVE-3964079730/apps.v1.Deployment.bingebuddy-dev.server	2026-09-22 19:45:15
++++ /var/folders/dp/ckv_5fyj0hsd7qj56bcz44zw0000gp/T/MERGED-3134000647/apps.v1.Deployment.bingebuddy-dev.server	2026-09-22 19:45:15
+@@ -2,12 +2,11 @@
+ kind: Deployment
+ metadata:
+   annotations:
+-    argocd.argoproj.io/tracking-id: bingebuddy-staging:apps/Deployment:bingebuddy-dev/server
+-    deployment.kubernetes.io/revision: "11"
++    deployment.kubernetes.io/revision: "1"
+     kubectl.kubernetes.io/last-applied-configuration: |
+       {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"bingebuddy-staging:apps/Deployment:bingebuddy-dev/server","deployment.kubernetes.io/revision":"1"},"labels":{"app":"server","app.kubernetes.io/managed-by":"argocd"},"name":"server","namespace":"bingebuddy-dev"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"server"}},"strategy":{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0},"type":"RollingUpdate"},"template":{"metadata":{"labels":{"app":"server"}},"spec":{"containers":[{"envFrom":[{"configMapRef":{"name":"server-config"}},{"secretRef":{"name":"server-secrets"}}],"image":"ghcr.io/yash2312garg/bingebuddy-server:a35aee2","imagePullPolicy":"Always","livenessProbe":{"failureThreshold":3,"httpGet":{"path":"/health","port":3000},"initialDelaySeconds":30,"periodSeconds":10},"name":"server","ports":[{"containerPort":3000,"name":"http","protocol":"TCP"}],"readinessProbe":{"failureThreshold":3,"httpGet":{"path":"/health","port":3000},"initialDelaySeconds":10,"periodSeconds":5},"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}},"securityContext":{"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":false,"runAsNonRoot":true,"runAsUser":1001}}],"imagePullSecrets":[{"name":"ghcr-secret"}],"terminationGracePeriodSeconds":30}}}}
+   creationTimestamp: "2026-09-21T08:23:34Z"
+-  generation: 215
++  generation: 216
+   labels:
+     app: server
+     app.kubernetes.io/managed-by: argocd

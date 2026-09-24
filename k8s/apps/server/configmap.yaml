@@ -29,3 +29,4 @@ data:
   AWS_S3_BUCKET: "bingebuddy-uploads"
   # Auth service URL (for token validation)
   AUTH_SERVICE_URL: "http://auth-service:3002"
+  FRONTEND_URL: "http://bingebuddy.local:8080"
