@@ -1,0 +1,258 @@
+apiVersion: v1
+data:
+  init.sql: "-- =============================================================================\n--
+    MAIN SERVICE DATABASE DUMP (Strict SSOT - No Auth Data)\n-- =============================================================================\n\nSET
+    statement_timeout = 0;\nSET lock_timeout = 0;\nSET idle_in_transaction_session_timeout
+    = 0;\nSET client_encoding = 'UTF8';\nSET standard_conforming_strings = on;\nSET
+    check_function_bodies = false;\nSET xmloption = content;\nSET client_min_messages
+    = warning;\nSET row_security = off;\n\n-- Enable UUID generation (Required for
+    schema)\nCREATE EXTENSION IF NOT EXISTS pgcrypto SCHEMA public;\n\n-- -----------------------------------------------------------------------------\n--
+    1. FUNCTIONS\n-- -----------------------------------------------------------------------------\n\nCREATE
+    OR REPLACE FUNCTION public.update_updated_at_column() RETURNS trigger\n    LANGUAGE
+    plpgsql\n    AS $$\nBEGIN\n   NEW.updated_at = NOW();\n   RETURN NEW;\nEND;\n$$;\n\nSET
+    default_tablespace = '';\nSET default_table_access_method = heap;\n\n-- -----------------------------------------------------------------------------\n--
+    2. TABLES\n-- -----------------------------------------------------------------------------\n\nCREATE
+    TABLE public.restaurant_details (\n    id UUID PRIMARY KEY,\n    name character
+    varying(255) NOT NULL,\n    description text,\n    pan character varying(10) NOT
+    NULL,\n    fassai character varying(256) NOT NULL,\n    adhaar_card character
+    varying(256) NOT NULL,\n    gst character varying(256) NOT NULL,\n    logo_url
+    character varying(256),\n    full_img character varying(256),\n    created_at
+    timestamp without time zone DEFAULT now(),\n    updated_at timestamp without time
+    zone DEFAULT now()\n);\n\nCREATE TABLE public.restaurant_addresses (\n    id SERIAL
+    PRIMARY KEY,\n    restaurant_id UUID UNIQUE NOT NULL REFERENCES public.restaurant_details(id)
+    ON DELETE CASCADE,\n    full_address text,\n    street character varying(255),\n
+    \   city character varying(100),\n    state character varying(100),\n    postal_code
+    character varying(20),\n    country character varying(100),\n    latitude numeric(9,6),\n
+    \   longitude numeric(9,6),\n    created_at timestamp without time zone DEFAULT
+    now(),\n    updated_at timestamp without time zone DEFAULT now()\n);\n\nCREATE
+    TABLE public.restaurant_hours (\n    id SERIAL PRIMARY KEY,\n    restaurant_id
+    UUID NOT NULL REFERENCES public.restaurant_details(id) ON DELETE CASCADE,\n    day_of_week
+    integer,\n    open_time time without time zone,\n    close_time time without time
+    zone,\n    is_closed time without time zone, \n    created_at timestamp without
+    time zone DEFAULT CURRENT_TIMESTAMP,\n    updated_at timestamp without time zone
+    DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE public.menu (\n    id SERIAL PRIMARY
+    KEY,\n    restaurant_id UUID NOT NULL REFERENCES public.restaurant_details(id)
+    ON DELETE CASCADE,\n    name character varying(256) NOT NULL,\n    short_desc
+    character varying(500) NOT NULL,\n    long_desc text NOT NULL,\n    is_active
+    boolean DEFAULT true NOT NULL,\n    available_from time without time zone,\n    available_until
+    time without time zone,\n    rules json,\n    created_at timestamp without time
+    zone DEFAULT CURRENT_TIMESTAMP,\n    updated_at timestamp without time zone DEFAULT
+    CURRENT_TIMESTAMP\n);\n\nCREATE TABLE public.categories (\n    id SERIAL PRIMARY
+    KEY,\n    menu_id integer NOT NULL REFERENCES public.menu(id) ON DELETE CASCADE,\n
+    \   name character varying(256) NOT NULL,\n    short_desc character varying(500),\n
+    \   long_desc text,\n    display_order integer,\n    is_active boolean,\n    rules
+    json,\n    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,\n
+    \   updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE
+    TABLE public.menue_items (\n    id SERIAL PRIMARY KEY,\n    category_id integer
+    NOT NULL REFERENCES public.categories(id) ON DELETE CASCADE,\n    name character
+    varying(256) NOT NULL,\n    short_desc character varying(500),\n    long_desc
+    text,\n    base_price integer NOT NULL,\n    is_available boolean DEFAULT false,\n
+    \   is_veg boolean NOT NULL,\n    spice_level character varying,\n    prep_time
+    integer,\n    tags json,\n    img_url json,\n    created_at timestamp without
+    time zone DEFAULT CURRENT_TIMESTAMP,\n    updated_at timestamp without time zone
+    DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE public.item_availability (\n    id
+    SERIAL PRIMARY KEY,\n    item_id integer NOT NULL REFERENCES public.menue_items(id)
+    ON DELETE CASCADE,\n    available_from time without time zone NOT NULL,\n    available_until
+    time without time zone NOT NULL,\n    days_available json,\n    is_active boolean
+    DEFAULT false,\n    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,\n
+    \   updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE
+    TABLE public.variants (\n    id SERIAL PRIMARY KEY,\n    name character varying(256),\n
+    \   description text,\n    is_active boolean,\n    created_at timestamp without
+    time zone DEFAULT CURRENT_TIMESTAMP,\n    updated_at timestamp without time zone
+    DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE public.variant_options (\n    id
+    SERIAL PRIMARY KEY,\n    variant_id integer REFERENCES public.variants(id) ON
+    DELETE CASCADE,\n    name character varying(265),\n    description text,\n    price_modifier
+    integer,\n    display_order integer,\n    created_at timestamp without time zone
+    DEFAULT CURRENT_TIMESTAMP,\n    updated_at timestamp without time zone DEFAULT
+    CURRENT_TIMESTAMP\n);\n\nCREATE TABLE public.item_variants (\n    id SERIAL PRIMARY
+    KEY,\n    item_id integer REFERENCES public.menue_items(id) ON DELETE CASCADE,\n
+    \   variant_id integer REFERENCES public.variants(id) ON DELETE CASCADE,\n    is_required
+    boolean,\n    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,\n
+    \   updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE
+    TABLE public.addons (\n    id SERIAL PRIMARY KEY,\n    name character varying(256),\n
+    \   description character varying(500),\n    is_active boolean,\n    created_at
+    timestamp without time zone DEFAULT CURRENT_TIMESTAMP,\n    updated_at timestamp
+    without time zone DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE public.item_addons
+    (\n    id SERIAL PRIMARY KEY,\n    item_id integer REFERENCES public.menue_items(id)
+    ON DELETE CASCADE,\n    addon_id integer REFERENCES public.addons(id) ON DELETE
+    CASCADE,\n    price integer,\n    is_required integer,\n    max_quantity integer,\n
+    \   min_quantity integer,\n    display_order integer,\n    rules json,\n    created_at
+    timestamp without time zone DEFAULT CURRENT_TIMESTAMP,\n    updated_at timestamp
+    without time zone DEFAULT CURRENT_TIMESTAMP\n);\n\n-- -----------------------------------------------------------------------------\n--
+    3. TRIGGERS\n-- -----------------------------------------------------------------------------\n\nCREATE
+    TRIGGER set_updated_at BEFORE UPDATE ON public.restaurant_details FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();\nCREATE TRIGGER set_updated_at
+    BEFORE UPDATE ON public.restaurant_addresses FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();\nCREATE
+    TRIGGER set_updated_at_restaurant_hours BEFORE UPDATE ON public.restaurant_hours
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();\nCREATE TRIGGER
+    set_updated_at_mennu BEFORE UPDATE ON public.menu FOR EACH ROW EXECUTE FUNCTION
+    public.update_updated_at_column();\nCREATE TRIGGER set_updated_at_categories BEFORE
+    UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();\nCREATE
+    TRIGGER set_updated_menue_items BEFORE UPDATE ON public.menue_items FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();\n\n-- =============================================================================\n--
+    4. SEED DATA \n-- =============================================================================\nBEGIN;\n\n--
+    EXACTLY 3 RESTAURANTS\nINSERT INTO public.restaurant_details (id, name, description,
+    pan, fassai, adhaar_card, gst) VALUES\n('550e8400-e29b-41d4-a716-446655440001',
+    'Delhi Chaat Express', 'Authentic Chandni Chowk street food.', 'ABCDE1111A', '10022011000123',
+    '200030004000', '07AAAAA1111A1Z1'),\n('550e8400-e29b-41d4-a716-446655440002',
+    'The Hyderabadi Sun', 'Premium long-grain slow dum biryanis.', 'BCDEF2222B', '10022044000456',
+    '300040005000', '36BBBBB2222B1Z2'),\n('550e8400-e29b-41d4-a716-446655440003',
+    'Mumbai Tiffin Co.', 'Pure vegetarian coastal maharashtrian.', 'CDEFG3333C', '10022022000789',
+    '400050006000', '27CCCCC3333C1Z3');\n\n-- EXACTLY 3 ADDRESSES (1 per restaurant
+    due to UNIQUE constraint)\nINSERT INTO public.restaurant_addresses (id, restaurant_id,
+    full_address, street, city, state, postal_code, country, latitude, longitude)
+    VALUES\n(1, '550e8400-e29b-41d4-a716-446655440001', 'Shop 4, Connaught Place',
+    'Connaught Place', 'New Delhi', 'Delhi', '110001', 'India', 28.6304, 77.2177),\n(2,
+    '550e8400-e29b-41d4-a716-446655440002', 'Plot 88, Gachibowli IT', 'Gachibowli',
+    'Hyderabad', 'Telangana', '500032', 'India', 17.4401, 78.3489),\n(3, '550e8400-e29b-41d4-a716-446655440003',
+    'Building 12, Linking Road', 'Linking Road', 'Mumbai', 'Maharashtra', '400054',
+    'India', 19.0843, 72.8360);\n\n-- 21 HOURS (3 restaurants x 7 days)\nINSERT INTO
+    public.restaurant_hours (restaurant_id, day_of_week, open_time, close_time) \nSELECT
+    r_id, day, '09:00:00', '23:00:00'\nFROM unnest(ARRAY[\n    '550e8400-e29b-41d4-a716-446655440001'::uuid,
+    \n    '550e8400-e29b-41d4-a716-446655440002'::uuid, \n    '550e8400-e29b-41d4-a716-446655440003'::uuid\n])
+    r_id \nCROSS JOIN unnest(ARRAY[1,2,3,4,5,6,7]) day;\n\n-- 10 MENUS (Distributed
+    across the 3 restaurants)\nINSERT INTO public.menu (id, restaurant_id, name, short_desc,
+    long_desc, is_active, available_from, available_until) VALUES\n(1, '550e8400-e29b-41d4-a716-446655440001',
+    'Morning Breakfast', 'Classic Old Delhi morning breakfast', 'Heavy rich matching
+    traditional breakfast available early hours.', true, '08:00:00', '12:00:00'),\n(2,
+    '550e8400-e29b-41d4-a716-446655440001', 'Lunch Thalis', 'Express lunch meals',
+    'Quick and filling meals for the afternoon rush.', true, '12:00:00', '16:00:00'),\n(3,
+    '550e8400-e29b-41d4-a716-446655440001', 'Evening Chaat', 'Chaat and street bites',
+    'Perfect spicy snacks for evening cravings.', true, '16:00:00', '20:00:00'),\n(4,
+    '550e8400-e29b-41d4-a716-446655440001', 'Late Night Bites', 'Midnight munchies',
+    'Parathas and rolls for the night owls.', true, '22:00:00', '02:00:00'),\n(5,
+    '550e8400-e29b-41d4-a716-446655440002', 'Royal Shahi Lunch', 'The premium royal
+    daytime spread', 'Biryanis and rich cashew gravies engineered for fine dining.',
+    true, '12:00:00', '16:00:00'),\n(6, '550e8400-e29b-41d4-a716-446655440002', 'Nizami
+    Dinner', 'Late night kebabs and curries', 'Rich dinner spread for the royal palate.',
+    true, '19:00:00', '23:59:00'),\n(7, '550e8400-e29b-41d4-a716-446655440002', 'Weekend
+    Specials', 'Exotic weekend only items', 'Haleem and special biryanis available
+    Saturday/Sunday.', true, '12:00:00', '23:59:00'),\n(8, '550e8400-e29b-41d4-a716-446655440003',
+    'Aamchi Mumbai Breakfast', 'Quick transit bites', 'Classic fast-moving local breakfast
+    favorites like Vada Pav.', true, '07:30:00', '11:30:00'),\n(9, '550e8400-e29b-41d4-a716-446655440003',
+    'Coastal Lunch Fare', 'Malvani and Konkani curries', 'Spicy coconut based curries
+    and fresh catch.', true, '12:30:00', '15:30:00'),\n(10, '550e8400-e29b-41d4-a716-446655440003',
+    'Street Food Dinners', 'Pav bhaji and misal', 'Heavy street food dinners for the
+    family.', true, '18:30:00', '23:00:00');\n\n-- 15 CATEGORIES (Mapped to the 10
+    menus above)\nINSERT INTO public.categories (id, menu_id, name, short_desc, display_order,
+    is_active) VALUES\n(1, 1, 'Stuffed Parathas', 'Heavy breads', 1, true),\n(2, 1,
+    'Hot Beverages', 'Morning teas & coffees', 2, true),\n(3, 2, 'Executive Thalis',
+    'Set lunch meals', 1, true),\n(4, 3, 'Spicy Chaat', 'Tangy snacks', 1, true),\n(5,
+    4, 'Midnight Rolls', 'Kathi rolls', 1, true),\n(6, 5, 'Dum Biryani', 'Slow cooked
+    rice', 1, true),\n(7, 5, 'Rich Gravies', 'Cashew/Tomato bases', 2, true),\n(8,
+    6, 'Charcoal Kebabs', 'Grilled starters', 1, true),\n(9, 6, 'Breads', 'Naan &
+    Roti', 2, true),\n(10, 7, 'Haleem Specials', 'Slow cooked meat stew', 1, true),\n(11,
+    8, 'Pav Items', 'Bread based snacks', 1, true),\n(12, 8, 'Poha & Upma', 'Light
+    breakfast', 2, true),\n(13, 9, 'Fish Curries', 'Coastal seafood', 1, true),\n(14,
+    9, 'Rice Plates', 'Curry and rice sets', 2, true),\n(15, 10, 'Bhaji Variants',
+    'Mashed vegetable curries', 1, true);\n\n-- 25 MENU ITEMS (Distributed across
+    the 15 categories)\nINSERT INTO public.menue_items (id, category_id, name, short_desc,
+    long_desc, base_price, is_available, is_veg, spice_level, prep_time) VALUES\n(1,
+    1, 'Aloo Paratha', 'Potato stuffed', 'Classic potato paratha served with butter.',
+    80, true, true, 'Mild', 15),\n(2, 1, 'Paneer Paratha', 'Cottage cheese stuffed',
+    'Rich paneer stuffed paratha.', 100, true, true, 'Mild', 15),\n(3, 2, 'Masala
+    Chai', 'Spiced tea', 'Strong morning tea.', 30, true, true, 'None', 5),\n(4, 3,
+    'Veg Deluxe Thali', 'Full meal', 'Dal, 2 sabzis, roti, rice, sweet.', 180, true,
+    true, 'Medium', 10),\n(5, 4, 'Aloo Tikki Chaat', 'Potato patties', 'Crispy patties
+    with yogurt and chutney.', 90, true, true, 'Medium', 10),\n(6, 4, 'Papdi Chaat',
+    'Crispy wafers', 'Wafers with potatoes, chickpeas, chutneys.', 80, true, true,
+    'Medium', 10),\n(7, 5, 'Egg Chicken Roll', 'Heavy wrap', 'Flaky paratha with egg
+    and chicken.', 120, true, false, 'Medium', 15),\n(8, 6, 'Chicken Dum Biryani',
+    'Classic chicken rice', 'Aged basmati cooked with tender chicken.', 250, true,
+    false, 'Medium', 20),\n(9, 6, 'Mutton Dum Biryani', 'Classic mutton rice', 'Rich
+    mutton biryani slow cooked for hours.', 350, true, false, 'High', 25),\n(10, 7,
+    'Butter Chicken', 'Tomato gravy', 'Creamy rich tomato based chicken curry.', 280,
+    true, false, 'Mild', 20),\n(11, 8, 'Chicken Tikka', 'Grilled chicken', 'Boneless
+    chicken marinated and grilled.', 220, true, false, 'Medium', 20),\n(12, 8, 'Mutton
+    Seekh Kebab', 'Minced meat skewer', 'Spiced minced mutton grilled on skewers.',
+    290, true, false, 'High', 20),\n(13, 9, 'Garlic Naan', 'Garlic flatbread', 'Refined
+    flour bread with garlic and butter.', 50, true, true, 'None', 10),\n(14, 10, 'Mutton
+    Haleem', 'Meat and wheat stew', 'Pounded meat cooked overnight with spices.',
+    300, true, false, 'Medium', 30),\n(15, 11, 'Vada Pav', 'Potato slider', 'Classic
+    Mumbai street food.', 40, true, true, 'High', 5),\n(16, 11, 'Misal Pav', 'Spicy
+    sprout curry', 'Sprouts curry served with pav.', 70, true, true, 'Very High',
+    10),\n(17, 12, 'Kanda Poha', 'Onion flattened rice', 'Light and healthy beaten
+    rice snack.', 50, true, true, 'Mild', 10),\n(18, 13, 'Surmai Curry', 'Kingfish
+    curry', 'Spicy coconut and tamarind fish curry.', 380, true, false, 'High', 20),\n(19,
+    13, 'Prawns Koliwada', 'Fried prawns', 'Spicy deep fried prawns.', 420, true,
+    false, 'Medium', 15),\n(20, 14, 'Fish Thali', 'Complete seafood meal', 'Fish fry,
+    curry, rice, sol kadhi.', 450, true, false, 'High', 15),\n(21, 15, 'Pav Bhaji',
+    'Mashed veg curry', 'Mixed vegetables mashed on a hot tawa.', 120, true, true,
+    'Medium', 15),\n(22, 15, 'Cheese Pav Bhaji', 'Cheesy mashed veg', 'Classic pav
+    bhaji loaded with processed cheese.', 150, true, true, 'Medium', 15),\n(23, 1,
+    'Gobi Paratha', 'Cauliflower stuffed', 'Spiced cauliflower paratha.', 90, true,
+    true, 'Medium', 15),\n(24, 6, 'Veg Biryani', 'Spiced vegetable rice', 'Basmati
+    rice cooked with mixed vegetables.', 200, true, true, 'Medium', 20),\n(25, 2,
+    'Filter Coffee', 'South Indian coffee', 'Strong milk coffee.', 40, true, true,
+    'None', 5);\n\n-- 25 ITEM AVAILABILITY (1-to-1 matching with items)\nINSERT INTO
+    public.item_availability (id, item_id, available_from, available_until, is_active)
+    VALUES\n(1, 1, '08:00:00', '12:00:00', true),\n(2, 2, '08:00:00', '12:00:00',
+    true),\n(3, 3, '08:00:00', '12:00:00', true),\n(4, 4, '12:00:00', '16:00:00',
+    true),\n(5, 5, '16:00:00', '20:00:00', true),\n(6, 6, '16:00:00', '20:00:00',
+    true),\n(7, 7, '22:00:00', '02:00:00', true),\n(8, 8, '12:00:00', '16:00:00',
+    true),\n(9, 9, '12:00:00', '16:00:00', true),\n(10, 10, '12:00:00', '16:00:00',
+    true),\n(11, 11, '19:00:00', '23:59:00', true),\n(12, 12, '19:00:00', '23:59:00',
+    true),\n(13, 13, '19:00:00', '23:59:00', true),\n(14, 14, '12:00:00', '23:59:00',
+    true),\n(15, 15, '07:30:00', '11:30:00', true),\n(16, 16, '07:30:00', '11:30:00',
+    true),\n(17, 17, '07:30:00', '11:30:00', true),\n(18, 18, '12:30:00', '15:30:00',
+    true),\n(19, 19, '12:30:00', '15:30:00', true),\n(20, 20, '12:30:00', '15:30:00',
+    true),\n(21, 21, '18:30:00', '23:00:00', true),\n(22, 22, '18:30:00', '23:00:00',
+    true),\n(23, 23, '08:00:00', '12:00:00', true),\n(24, 24, '12:00:00', '16:00:00',
+    true),\n(25, 25, '08:00:00', '12:00:00', true);\n\n-- 10 VARIANTS\nINSERT INTO
+    public.variants (id, name, description, is_active) VALUES\n(1, 'Portion Size',
+    'Size of the serving', true),\n(2, 'Spice Level', 'How hot do you want it', true),\n(3,
+    'Bread Choice', 'Type of bread', true),\n(4, 'Preparation', 'Cooking style', true),\n(5,
+    'Egg Choice', 'Number of eggs', true),\n(6, 'Meat Cut', 'Boneless or Bone-in',
+    true),\n(7, 'Sweetness', 'Sugar level', true),\n(8, 'Butter Level', 'Amount of
+    butter', true),\n(9, 'Cheese Type', 'Type of cheese', true),\n(10, 'Cooking Oil',
+    'Type of oil used', true);\n\n-- 20 VARIANT OPTIONS\nINSERT INTO public.variant_options
+    (id, variant_id, name, price_modifier, display_order) VALUES\n(1, 1, 'Half', 0,
+    1),\n(2, 1, 'Full', 100, 2),\n(3, 1, 'Family Pack', 250, 3),\n(4, 2, 'Mild', 0,
+    1),\n(5, 2, 'Medium', 0, 2),\n(6, 2, 'Extra Spicy', 10, 3),\n(7, 3, 'Whole Wheat',
+    0, 1),\n(8, 3, 'Refined Flour', 0, 2),\n(9, 4, 'Tawa Fry', 0, 1),\n(10, 4, 'Deep
+    Fry', 15, 2),\n(11, 5, 'Single Egg', 15, 1),\n(12, 5, 'Double Egg', 30, 2),\n(13,
+    6, 'Bone-in', 0, 1),\n(14, 6, 'Boneless', 40, 2),\n(15, 7, 'Less Sugar', 0, 1),\n(16,
+    7, 'Normal Sugar', 0, 2),\n(17, 8, 'Regular Butter', 0, 1),\n(18, 8, 'Extra Amul
+    Butter', 20, 2),\n(19, 9, 'Processed Cheese', 30, 1),\n(20, 9, 'Mozzarella', 50,
+    2);\n\n-- 20 ITEM VARIANTS\nINSERT INTO public.item_variants (id, item_id, variant_id,
+    is_required) VALUES\n(1, 8, 1, true),\n(2, 9, 1, true),\n(3, 10, 2, false),\n(4,
+    11, 2, true),\n(5, 7, 5, true),\n(6, 12, 6, true),\n(7, 18, 4, true),\n(8, 19,
+    4, true),\n(9, 3, 7, true),\n(10, 25, 7, true),\n(11, 1, 8, false),\n(12, 2, 8,
+    false),\n(13, 21, 8, false),\n(14, 22, 9, false),\n(15, 15, 2, true),\n(16, 16,
+    2, true),\n(17, 24, 1, true),\n(18, 14, 1, true),\n(19, 13, 8, false),\n(20, 4,
+    3, true);\n\n-- 12 ADDONS\nINSERT INTO public.addons (id, name, description, is_active)
+    VALUES\n(1, 'Extra Chutney', 'Mint and coriander dip', true),\n(2, 'Extra Raita',
+    'Yogurt side', true),\n(3, 'Extra Pav', 'Pair of bread rolls', true),\n(4, 'Salad
+    Plate', 'Onion and cucumber', true),\n(5, 'Roasted Papad', 'Roasted lentil wafer',
+    true),\n(6, 'Fried Papad', 'Fried lentil wafer', true),\n(7, 'Extra Sambhar',
+    'Lentil stew', true),\n(8, 'Extra Cheese', 'Grated cheese', true),\n(9, 'Boiled
+    Egg', 'Single boiled egg', true),\n(10, 'Mirchi Ka Salan', 'Peanut and chili gravy',
+    true),\n(11, 'Sweet Pan', 'Mouth freshener', true),\n(12, 'Extra Butter', 'Dollop
+    of butter', true);\n\n-- 25 ITEM ADDONS\nINSERT INTO public.item_addons (id, item_id,
+    addon_id, price, is_required, max_quantity, min_quantity) VALUES\n(1, 1, 1, 10,
+    0, 2, 0),\n(2, 2, 1, 10, 0, 2, 0),\n(3, 5, 1, 10, 0, 2, 0),\n(4, 6, 1, 10, 0,
+    2, 0),\n(5, 8, 2, 30, 0, 3, 0),\n(6, 9, 2, 30, 0, 3, 0),\n(7, 24, 2, 30, 0, 3,
+    0),\n(8, 8, 10, 40, 0, 2, 0),\n(9, 9, 10, 40, 0, 2, 0),\n(10, 15, 3, 15, 0, 4,
+    0),\n(11, 16, 3, 15, 0, 4, 0),\n(12, 21, 3, 15, 0, 4, 0),\n(13, 22, 3, 15, 0,
+    4, 0),\n(14, 21, 8, 30, 0, 1, 0),\n(15, 1, 12, 15, 0, 2, 0),\n(16, 2, 12, 15,
+    0, 2, 0),\n(17, 4, 5, 10, 0, 2, 0),\n(18, 4, 6, 15, 0, 2, 0),\n(19, 20, 4, 20,
+    0, 1, 0),\n(20, 11, 4, 20, 0, 1, 0),\n(21, 12, 4, 20, 0, 1, 0),\n(22, 8, 11, 25,
+    0, 1, 0),\n(23, 9, 11, 25, 0, 1, 0),\n(24, 7, 9, 20, 0, 2, 0),\n(25, 14, 4, 20,
+    0, 1, 0);\n\nCOMMIT;\n\n-- -----------------------------------------------------------------------------\n--
+    5. DYNAMIC SEQUENCE RESETS\n-- -----------------------------------------------------------------------------\n\nSELECT
+    pg_catalog.setval('public.restaurant_addresses_id_seq', (SELECT MAX(id) FROM public.restaurant_addresses),
+    true);\nSELECT pg_catalog.setval('public.restaurant_hours_id_seq', (SELECT MAX(id)
+    FROM public.restaurant_hours), true);\nSELECT pg_catalog.setval('public.menu_id_seq',
+    (SELECT MAX(id) FROM public.menu), true);\nSELECT pg_catalog.setval('public.categories_id_seq',
+    (SELECT MAX(id) FROM public.categories), true);\nSELECT pg_catalog.setval('public.menue_items_id_seq',
+    (SELECT MAX(id) FROM public.menue_items), true);\nSELECT pg_catalog.setval('public.item_availability_id_seq',
+    (SELECT MAX(id) FROM public.item_availability), true);\nSELECT pg_catalog.setval('public.variants_id_seq',
+    (SELECT MAX(id) FROM public.variants), true);\nSELECT pg_catalog.setval('public.variant_options_id_seq',
+    (SELECT MAX(id) FROM public.variant_options), true);\nSELECT pg_catalog.setval('public.item_variants_id_seq',
+    (SELECT MAX(id) FROM public.item_variants), true);\nSELECT pg_catalog.setval('public.addons_id_seq',
+    (SELECT MAX(id) FROM public.addons), true);\nSELECT pg_catalog.setval('public.item_addons_id_seq',
+    (SELECT MAX(id) FROM public.item_addons), true);"
+kind: ConfigMap
+metadata:
+  name: server-postgres-init
+  namespace: bingebuddy-dev
