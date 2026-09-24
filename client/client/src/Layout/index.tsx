@@ -40,7 +40,7 @@ const PostLoginLayouts: React.FC = () => {
 
       // Convert it to a Toast payload layout map
       const newToast: ToastMessage = {
-        id: crypto.randomUUID(), // Using the unique Postgres ID
+        id: typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Date.now().toString() + Math.random().toString(36).substring(2), // Fallback for insecure contexts
         title: latestNotification.title,
         message: latestNotification.message,
         priority: "LOW"
