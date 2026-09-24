@@ -27,10 +27,10 @@ type: Opaque
 data:
   # echo -n "admin123" | base64
   DB_PASSWORD: YWRtaW4xMjM=
-  # echo -n "fern.metz@ethereal.email" | base64
-  NODEMAILER_USER: ZmVybi5tZXR6QGV0aGVyZWFsLmVtYWls
-  # echo -n "PhxXhjnKBmN3YctdTM" | base64
-  NODEMAILER_USER_PASSWORD: UGh4WGhqbktCbU4zWWN0ZFRN
+  # echo -n "v5tmmf2ennoca7hv@ethereal.email" | base64
+  NODEMAILER_USER: djV0bW1mMmVubm9jYTdodkBldGhlcmVhbC5lbWFpbA==
+  # echo -n "Ffzj4GPA7SGaagWWDH" | base64
+  NODEMAILER_USER_PASSWORD: RmZ6ajRHUEE3U0dhYWdXV0RI
 ---
 apiVersion: apps/v1
 kind: Deployment

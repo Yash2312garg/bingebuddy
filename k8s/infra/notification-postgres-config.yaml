@@ -79,6 +79,21 @@ data:
     
     CREATE TABLE logs_y2026m07 PARTITION OF notification_delivery_logs
         FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
+
+    CREATE TABLE logs_y2026m08 PARTITION OF notification_delivery_logs
+        FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+
+    CREATE TABLE logs_y2026m09 PARTITION OF notification_delivery_logs
+        FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
+
+    CREATE TABLE logs_y2026m10 PARTITION OF notification_delivery_logs
+        FOR VALUES FROM ('2026-10-01') TO ('2026-11-01');
+
+    CREATE TABLE logs_y2026m11 PARTITION OF notification_delivery_logs
+        FOR VALUES FROM ('2026-11-01') TO ('2026-12-01');
+
+    CREATE TABLE logs_y2026m12 PARTITION OF notification_delivery_logs
+        FOR VALUES FROM ('2026-12-01') TO ('2027-01-01');
     
     -- Index for debugging specific failed stream events
     CREATE INDEX idx_logs_event_id ON notification_delivery_logs(event_id);
