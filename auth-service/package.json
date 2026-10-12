@@ -10,6 +10,7 @@
     "test:api": "jest --testPathPatterns=api",
     "test:watch": "jest --watch --testPathPatterns=unit",
     "test:coverage": "jest --coverage",
+    "test:load": "k6 run test/breakpoint.test.js",
     "dev": "nodemon --exec tsx src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc"
