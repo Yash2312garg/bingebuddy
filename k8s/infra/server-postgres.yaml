@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: server-postgres
   namespace: bingebuddy-dev
@@ -7,7 +7,13 @@ metadata:
     app: server-postgres
     app.kubernetes.io/managed-by: argocd
 spec:
+  serviceName: server-postgres
   replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
   selector:
     matchLabels:
       app: server-postgres
@@ -16,32 +22,68 @@ spec:
       labels:
         app: server-postgres
     spec:
+      terminationGracePeriodSeconds: 60
       containers:
         - name: postgres
           image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
           env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
             - name: POSTGRES_DB
               value: "bingebuddy"
             - name: POSTGRES_USER
               value: "yash"
             - name: POSTGRES_PASSWORD
               value: "Nishi@123"
-          volumeMounts:
-            - name: init-script
-              mountPath: /docker-entrypoint-initdb.d
-          ports:
-            - containerPort: 5432
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "100m"
+              cpu: 100m
+              memory: 128Mi
             limits:
-              memory: "512Mi"
-              cpu: "500m"
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "su-exec postgres pg_ctl -D \"$PGDATA\" -m fast -w -t 50 stop"]
+          startupProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -h 127.0.0.1 -p 5432 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 36
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -h 127.0.0.1 -p 5432 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -h 127.0.0.1 -p 5432 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
       volumes:
         - name: init-script
           configMap:
             name: server-postgres-init
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path-retain
+        resources:
+          requests:
+            storage: 2Gi
 ---
 apiVersion: v1
 kind: Service
@@ -58,4 +100,3 @@ spec:
   ports:
     - port: 5432
       targetPort: 5432
-      protocol: TCP
