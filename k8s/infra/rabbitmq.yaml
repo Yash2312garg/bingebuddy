@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: rabbitmq
   namespace: bingebuddy-dev
@@ -7,7 +7,13 @@ metadata:
     app: rabbitmq
     app.kubernetes.io/managed-by: argocd
 spec:
+  serviceName: rabbitmq
   replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
   selector:
     matchLabels:
       app: rabbitmq
@@ -16,26 +22,50 @@ spec:
       labels:
         app: rabbitmq
     spec:
+      terminationGracePeriodSeconds: 60
       containers:
         - name: rabbitmq
-          image: rabbitmq:3-management-alpine
+          image: rabbitmq:3.13-management-alpine   # pin to 3.13-management-alpine
+          ports:
+            - { name: amqp, containerPort: 5672 }
+            - { name: management, containerPort: 15672 }
           env:
+            - name: RABBITMQ_NODENAME
+              value: rabbit@localhost           # Mnesia dir = /var/lib/rabbitmq/mnesia/rabbit@localhost, stable across pods
             - name: RABBITMQ_DEFAULT_USER
               value: "yash"
             - name: RABBITMQ_DEFAULT_PASS
               value: "Yash@123"
-          ports:
-            - containerPort: 5672
-              name: amqp
-            - containerPort: 15672
-              name: management
           resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
+            requests: { cpu: 100m, memory: 128Mi }
+            limits:   { cpu: 500m, memory: 512Mi }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/rabbitmq
+          startupProbe:
+            exec: { command: ["rabbitmq-diagnostics", "-q", "ping"] }
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 18                # up to 3 min (Mnesia recovery)
+          readinessProbe:
+            exec: { command: ["rabbitmq-diagnostics", "-q", "check_port_connectivity"] }
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec: { command: ["rabbitmq-diagnostics", "-q", "ping"] }
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 3
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path-retain
+        resources:
+          requests:
+            storage: 1Gi
 ---
 apiVersion: v1
 kind: Service
