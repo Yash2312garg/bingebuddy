@@ -101,3 +101,4 @@ client/client/.env
 # Never commit raw K8s Secret manifests — secrets are injected
 # by GitHub Actions from GitHub Secrets during CI/CD.
 k8s/**/secret.yaml
+*.dump
