@@ -160,7 +160,7 @@ All external traffic enters through a single entrypoint: the NGINX Ingress Contr
 
 | Category | Implementation |
 |---|---|
-| **NetworkPolicies** | ❌ Not implemented. All pods can communicate freely within the namespace. |
+| **NetworkPolicies** | ✅ Implemented (Zero-Trust, 16 policies under `k8s/infra/network-policies/`). Default-deny ingress & egress across namespace with explicit allowlists for Ingress controller, CoreDNS (UDP/TCP 53), internal datastores/services (PostgreSQL, Redis, RabbitMQ), service-to-service calls (`server` → `auth-service:3002`), CronJob DB maintenance, and outbound S3/SMTP with private CIDR & metadata (169.254.169.254) exceptions. |
 | **TLS Termination** | ❌ Not implemented. All traffic is plaintext HTTP. Port 443 is mapped in Kind config for future use. |
 | **mTLS / Service Mesh** | ❌ Not implemented. No Istio, Linkerd, or similar sidecar proxy. |
 | **CORS** | ✅ Handled at the Ingress level via annotations: `cors-allow-origin: "*"`, `cors-allow-credentials: "true"`. |
