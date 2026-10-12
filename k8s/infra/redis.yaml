@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: redis
   namespace: bingebuddy-dev
@@ -7,7 +7,13 @@ metadata:
     app: redis
     app.kubernetes.io/managed-by: argocd
 spec:
+  serviceName: redis
   replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
   selector:
     matchLabels:
       app: redis
@@ -16,18 +22,52 @@ spec:
       labels:
         app: redis
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: redis
-          image: redis:7.2-alpine
+          image: redis:7.2-alpine             # pin to 7.2.<patch>-alpine
+          # args (not command) keeps the image entrypoint: chown /data, drop to redis user
+          args:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            - --maxmemory
+            - 128mb                           # headroom for AOF rewrite fork under the 256Mi limit
+            - --maxmemory-policy
+            - volatile-lru                    # requires session/token keys to have a TTL; else use allkeys-lru
           ports:
             - containerPort: 6379
           resources:
-            requests:
-              memory: "64Mi"
-              cpu: "50m"
-            limits:
-              memory: "256Mi"
-              cpu: "250m"
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { cpu: 250m, memory: 256Mi }
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          startupProbe:                       # AOF load can take a moment
+            exec: { command: ["redis-cli", "ping"] }
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            exec: { command: ["redis-cli", "ping"] }
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          livenessProbe:
+            exec: { command: ["redis-cli", "ping"] }
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path-retain
+        resources:
+          requests:
+            storage: 512Mi
 ---
 apiVersion: v1
 kind: Service
