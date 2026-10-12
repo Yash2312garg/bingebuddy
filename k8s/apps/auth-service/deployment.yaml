@@ -27,7 +27,7 @@ spec:
       containers:
         - name: auth-service
           # ⚠️ GitHub Actions CI updates this tag automatically
-          image: ghcr.io/yash2312garg/bingebuddy-auth-service:e875654
+          image: ghcr.io/yash2312garg/bingebuddy-auth-service:edabd88
           imagePullPolicy: Always
           ports:
             - name: http
