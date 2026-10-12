@@ -166,6 +166,64 @@ All external traffic enters through a single entrypoint: the NGINX Ingress Contr
 | **CORS** | ✅ Handled at the Ingress level via annotations: `cors-allow-origin: "*"`, `cors-allow-credentials: "true"`. |
 | **Pod Security Context** | ✅ Application pods run as `runAsNonRoot: true, runAsUser: 1001` (except `client` which requires root for NGINX port 80). `allowPrivilegeEscalation: false` on all pods. |
 
+#### 1.4.1 Zero-Trust Network Policy Matrix
+
+The `bingebuddy-dev` namespace operates under a **Zero-Trust Network Security Model**. By default, all ingress and egress packets across all pods are denied (`default-deny-ingress`, `default-deny-egress`). Only explicitly permitted traffic vectors are authorized:
+
+| Source Workload | Target Workload / Endpoint | Protocol / Port | Direction | Justification & Architectural Flow |
+|---|---|---|---|---|
+| `ingress-nginx` (Controller) | `client` | TCP / 80 | Ingress (`client`) | Reverse proxy routing for frontend SPA static assets |
+| `ingress-nginx` (Controller) | `server` | TCP / 3000 | Ingress (`server`) | Reverse proxy routing for core API (`/restaurant/*`, `/user/*`) |
+| `ingress-nginx` (Controller) | `auth-service` | TCP / 3002 | Ingress (`auth-service`) | Reverse proxy routing for auth API (`/auth/*`) & auth subrequests |
+| `ingress-nginx` (Controller) | `notification-service` | TCP / 3001 | Ingress (`notification-service`) | Reverse proxy routing for notifications & SSE connections |
+| `server` | `auth-service` | TCP / 3002 | Inter-service (Bidirectional) | Token validation & user session resolution via `AUTH_SERVICE_URL` |
+| `auth-service` | `auth-postgres` | TCP / 5432 | Datastore | Authentication credentials, user accounts, and token store |
+| `auth-service` | `redis` | TCP / 6379 | Datastore | Rate limiting, token blacklisting, and session caching |
+| `auth-service` | `rabbitmq` | TCP / 5672 | Message Broker | Emitting auth-related events (`user.created`, `password.reset`) |
+| `server` | `server-postgres` | TCP / 5432 | Datastore | Core business entities, orders, menu items, restaurants |
+| `server` | `redis` | TCP / 6379 | Datastore | High-throughput operational caching and transient states |
+| `server` | `rabbitmq` | TCP / 5672 | Message Broker | Publishing domain event notifications to asynchronous workers |
+| `notification-service` | `notification-postgres` | TCP / 5432 | Datastore | Persisting notification audit trail and delivery logs |
+| `notification-service` | `rabbitmq` | TCP / 5672 | Message Broker | Consuming delivery queues (`email.queue`, `push.queue`) |
+| `notification-partition-cron` | `notification-postgres` | TCP / 5432 | Datastore | Monthly partition creation and schema table maintenance |
+| All Pods in `bingebuddy-dev` | `kube-system` / CoreDNS | UDP, TCP / 53 | Egress (Namespace-wide) | Cluster-internal service name resolution (`*.svc.cluster.local`) |
+| `server` | External AWS S3 | TCP / 443 | External Egress | Object storage upload/download; private RFC1918 & metadata blocked |
+| `notification-service` | External SMTP (Ethereal / SES) | TCP / 587, 465 | External Egress | Outbound transactional emails; private RFC1918 & metadata blocked |
+
+#### 1.4.2 Ingress Isolation Mechanics
+
+1. **Edge Gateway Isolation**:
+   - Only the NGINX Ingress Controller (running in `ingress-nginx` with label `app.kubernetes.io/name: ingress-nginx`) can transmit HTTP traffic into application pods.
+   - Direct pod-to-pod HTTP calls are forbidden by default. Pods cannot bypass the Ingress Gateway.
+2. **Authorized Inter-Service Bridge**:
+   - `server` requires direct HTTP access to `auth-service:3002` to satisfy its `AUTH_SERVICE_URL` dependency.
+   - Handled via an explicit allow rule on `auth-service-ingress` selecting `app: server` on port 3002, matching `server-egress` on port 3002.
+3. **Strict Datastore Ingress Siloing**:
+   - `server-postgres` only accepts ingress from `app: server`.
+   - `auth-postgres` only accepts ingress from `app: auth-service`.
+   - `notification-postgres` only accepts ingress from `app: notification-service` and `app: notification-partition-cron`.
+   - `redis` accepts ingress only from `app: server` and `app: auth-service`.
+   - `rabbitmq` accepts AMQP ingress (port 5672) only from `app: server`, `app: auth-service`, and `app: notification-service`. Management port 15672 is intentionally closed to application workloads.
+
+#### 1.4.3 Egress Isolation & Perimeter Hardening
+
+1. **Namespace-wide CoreDNS Allowlist**:
+   - When default-deny egress is enforced, pods immediately lose DNS resolution unless port 53 is opened.
+   - Policy `allow-dns-egress` selects `podSelector: {}` and grants egress to `kube-system` CoreDNS pods (`k8s-app: kube-dns`) over UDP and TCP port 53.
+2. **Public Egress Filtering & SSRF Mitigation**:
+   - Egress for AWS S3 (`server`) and SMTP (`notification-service`) utilizes `ipBlock` CIDR rules spanning `0.0.0.0/0` with strict exception blocks:
+     - `10.0.0.0/8` (Cluster Pod & Service CIDR)
+     - `172.16.0.0/12` (Container runtime / host private subnets)
+     - `192.168.0.0/16` (Host LAN network)
+     - `169.254.0.0/16` (Link-local addresses and Cloud Instance Metadata service `169.254.169.254`)
+     - `127.0.0.0/8` (Loopback network)
+   - Prevents Server-Side Request Forgery (SSRF) and prevents application pods from probing cluster-internal IPs or metadata credentials under the guise of outbound web traffic.
+
+#### 1.4.4 Enforcement & CNI Driver Mechanics
+
+- **Kindnet CNI Support**: The cluster runs Kindnet (`kindnetd:v20260528-9350166c`) on Kubernetes 1.36.1, which natively enforces NetworkPolicies via kernel-level packet filtering.
+- **Kubelet Probe Exemption**: Kubelet `httpGet` liveness/readiness probes originate from node-local IP addresses and are exempted by the CNI host-local bypass chains, ensuring zero false-positive probe restarts.
+
 ---
 
 ## 2. Workload & Pod Topology Strategy
@@ -282,6 +340,9 @@ strategy:
 | **Service Type** | All ClusterIP | NodePort, LoadBalancer | ClusterIP is the correct choice for a Kind cluster. NodePort wastes ports; LoadBalancer requires a cloud provider or MetalLB. |
 | **SSE Routing** | Separate Ingress resource with custom annotations | Same Ingress with per-path annotations | NGINX Ingress annotations apply at the **Ingress resource level**, not per-path. A dedicated Ingress was required to apply SSE-specific timeouts without affecting other routes. |
 | **Auth Gateway** | `auth-url` sub-request (Ingress annotation) | Application-level middleware per service | Centralizes authentication at the edge. Backend services don't need JWT verification libraries — they trust headers injected by the Ingress after successful auth. |
+| **Network Isolation** | Zero-Trust NetworkPolicies (Default-Deny) | Flat unconstrained namespace, Service Mesh (Istio mTLS) | Provides defense-in-depth and strict blast-radius limitation without the memory and CPU overhead of sidecar proxies. Prevents compromised frontend pods from accessing internal databases. |
+| **Rollout Strategy** | Phased Directional Rollout (Ingress → Egress + DNS) | Big-bang apply, Egress-first | Prevents CoreDNS query blackholing mid-flight. Applying ingress policies first ensures datastores are protected while leaving egress open, followed by atomic application of egress policies coupled with CoreDNS allowlists. |
+| **Perimeter Egress Security** | IPBlock CIDR with RFC1918 & Metadata Exceptions | Unrestricted 0.0.0.0/0 egress, NAT Gateway IP filtering | Prevents Server-Side Request Forgery (SSRF) and blocks access to cloud instance metadata (`169.254.169.254`), ensuring internet-bound pods (S3, SMTP) cannot traverse back into private cluster subnets. |
 
 ### 3.4 Storage Trade-offs
 
@@ -657,3 +718,221 @@ The pipeline is a **2-job workflow** triggered on pushes to `stage`:
 ```
 Push to stage → CI builds images → CI updates manifests in Git → ArgoCD syncs → K8s rolling update
 ```
+
+### 5.5 Production NetworkPolicy Manifest Specifications
+
+All NetworkPolicy manifests are deployed via GitOps from `k8s/infra/network-policies/`.
+
+#### 5.5.1 Namespace Default-Deny Policies (`00-default-deny-ingress.yaml` & `20-default-deny-egress-and-dns.yaml`)
+
+```yaml
+# Default Deny All Ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: bingebuddy-dev
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Default Deny All Egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: bingebuddy-dev
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+---
+# CoreDNS Egress Allowlist (UDP & TCP Port 53)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: bingebuddy-dev
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+```
+
+#### 5.5.2 Ingress Allow Policies (`10-ingress-allow.yaml` & `11-ingress-datastores.yaml`)
+
+```yaml
+# Ingress Controller -> Applications + Inter-Service (server -> auth-service)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auth-service-ingress
+  namespace: bingebuddy-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: auth-service
+  policyTypes:
+    - Ingress
+  ingress:
+    # Traffic from NGINX Ingress Controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3002
+    # Traffic from server (AUTH_SERVICE_URL token validation)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: server
+      ports:
+        - protocol: TCP
+          port: 3002
+```
+
+```yaml
+# Datastores Ingress: server-postgres, auth-postgres, notification-postgres, redis, rabbitmq
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: server-postgres-ingress
+  namespace: bingebuddy-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: server-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: server
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: notification-postgres-ingress
+  namespace: bingebuddy-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: notification-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: notification-service
+        - podSelector:
+            matchLabels:
+              app: notification-partition-cron
+      ports:
+        - protocol: TCP
+          port: 5432
+```
+
+#### 5.5.3 Application & CronJob Egress Policies (`21-egress-apps.yaml` & `22-egress-cron.yaml`)
+
+```yaml
+# Server Egress: server-postgres, redis, rabbitmq, auth-service, and external S3
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: server-egress
+  namespace: bingebuddy-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: server
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: server-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app: auth-service
+      ports:
+        - protocol: TCP
+          port: 3002
+    # External HTTPS egress (AWS S3) - excludes private CIDRs and 169.254 metadata
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# Partition Maintenance CronJob Egress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: notification-partition-cron-egress
+  namespace: bingebuddy-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: notification-partition-cron
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: notification-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+```
+
