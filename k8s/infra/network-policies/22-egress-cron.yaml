@@ -1,0 +1,26 @@
+# ============================================================
+# BingeBuddy — NetworkPolicy: Stage 2 CronJob Egress
+# Allows the partition maintenance CronJob to connect to
+# notification-postgres on port 5432.
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: notification-partition-cron-egress
+  namespace: bingebuddy-dev
+  labels:
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector:
+    matchLabels:
+      app: notification-partition-cron
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: notification-postgres
+      ports:
+        - protocol: TCP
+          port: 5432

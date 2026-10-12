@@ -1,0 +1,46 @@
+# ============================================================
+# BingeBuddy — NetworkPolicy: Stage 2 Default Deny Egress & CoreDNS Allow
+# Isolates all pods in bingebuddy-dev for egress while ensuring
+# DNS resolution to kube-system CoreDNS is maintained.
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: bingebuddy-dev
+  labels:
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+---
+# ============================================================
+# CoreDNS Egress Allow
+# Allows any pod in bingebuddy-dev to query kube-system CoreDNS
+# on port 53 (UDP + TCP).
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: bingebuddy-dev
+  labels:
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

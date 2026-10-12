@@ -1,0 +1,147 @@
+# ============================================================
+# BingeBuddy — NetworkPolicy: Stage 2 Application Egress
+# Explicit egress allow rules for server, auth-service, and
+# notification-service.
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auth-service-egress
+  namespace: bingebuddy-dev
+  labels:
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector:
+    matchLabels:
+      app: auth-service
+  policyTypes:
+    - Egress
+  egress:
+    # Dedicated datastores
+    - to:
+        - podSelector:
+            matchLabels:
+              app: auth-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Shared message broker & cache
+    - to:
+        - podSelector:
+            matchLabels:
+              app: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: server-egress
+  namespace: bingebuddy-dev
+  labels:
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector:
+    matchLabels:
+      app: server
+  policyTypes:
+    - Egress
+  egress:
+    # Dedicated database
+    - to:
+        - podSelector:
+            matchLabels:
+              app: server-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Shared message broker & cache
+    - to:
+        - podSelector:
+            matchLabels:
+              app: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Service-to-service communication: server -> auth-service for token validation
+    - to:
+        - podSelector:
+            matchLabels:
+              app: auth-service
+      ports:
+        - protocol: TCP
+          port: 3002
+    # External HTTPS egress (AWS S3) - blocks RFC1918 private subnets and cloud metadata
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: notification-service-egress
+  namespace: bingebuddy-dev
+  labels:
+    app.kubernetes.io/managed-by: argocd
+spec:
+  podSelector:
+    matchLabels:
+      app: notification-service
+  policyTypes:
+    - Egress
+  egress:
+    # Dedicated database
+    - to:
+        - podSelector:
+            matchLabels:
+              app: notification-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Message broker for consuming events
+    - to:
+        - podSelector:
+            matchLabels:
+              app: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+    # Outbound SMTP email delivery (ports 587 submission, 465 SMTPS)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 587
+        - protocol: TCP
+          port: 465
