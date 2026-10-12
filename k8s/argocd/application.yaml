@@ -44,6 +44,9 @@ spec:
 
   # ── Sync Policy ─────────────────────────────────────────────
   syncPolicy:
+    automated:
+      prune: true      # delete K8s resources removed from git
+      selfHeal: true   # revert manual kubectl changes back to git state
     syncOptions:
       - CreateNamespace=true    # auto-create bingebuddy-dev if missing
       - PrunePropagationPolicy=foreground
