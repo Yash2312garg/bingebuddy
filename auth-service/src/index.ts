@@ -14,6 +14,8 @@ import rabbitMQClient from "./config/rabbitmq";
 import { AuthConsumer } from "./serivces/rabbitmq/consumers/auth.consumer";
 const app = express();
 
+// Trust the first proxy (ingress-nginx) so req.ip reflects client IP from X-Forwarded-For
+app.set('trust proxy', 1);
 
 // ===== IMPORTANT: Track service readiness =====
 (app as any).isReady = false;

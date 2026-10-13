@@ -49,4 +49,5 @@ export interface OTPConfig {
     TTL: number;
     MAX_ATTEMPTS: number;
     RESEND_COOLDOWN: number;
+    MAX_RESENDS: number;
 }
