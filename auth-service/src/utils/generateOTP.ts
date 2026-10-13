@@ -1,140 +1,135 @@
-const crypto = require('crypto')
-import type {  OTPConfig, RateLimitConfigs } from './Types';
-//redis dao
+const crypto = require('crypto');
+import type { OTPConfig, RateLimitConfigs } from './Types';
 import { OtpDao } from "../dao/otp.dao";
-
-import type { Request} from "express";
-import bcrypt from "bcryptjs"
-
+import type { Request } from "express";
+import bcrypt from "bcryptjs";
 
 export const OTP_CONFIG: OTPConfig = {
-    LENGTH: 6,
-    TTL: 10 * 60, // 5 minutes in seconds
-    MAX_ATTEMPTS: 3,
-    RESEND_COOLDOWN: 60 // 1 minute in seconds
+  LENGTH: 6,
+  TTL: 10 * 60,         // 10 minutes in seconds
+  MAX_ATTEMPTS: 3,      // Max failed verification attempts per session
+  RESEND_COOLDOWN: 60,  // 1 minute cooldown between requests
+  MAX_RESENDS: 3,       // Max times user can resend OTP per session
 };
 
 export const RATE_LIMIT_CONFIG: RateLimitConfigs = {
-    GENERATE_OTP: {
-        window: 60, // 1 minute window
-        max: 3 // max 3 OTP generations per minute per IP
-    },
-    VERIFY_OTP: {
-        window: 60, // 1 minute window
-        max: 5 // max 5 verification attempts per minute per IP
-    }
-}
+  GENERATE_OTP: {
+    window: 60, // 1 minute window
+    max: 3,     // max 3 OTP generations per minute per IP
+  },
+  VERIFY_OTP: {
+    window: 60, // 1 minute window
+    max: 5,     // max 5 verification attempts per minute per IP
+  },
+};
+
 export const createOTP = (): string => {
-    return crypto.randomInt(100000, 999999).toString();
+  return crypto.randomInt(100000, 999999).toString();
 };
 
 export const getClientKey = (req: Request, type: string): string => {
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    return `rate_limit:${type}:${ip}`;
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  return `rate_limit:${type}:${ip}`;
 };
 
 export const getOTPKey = (identifier: string): string => `otp:${identifier}`;
-
 export const getAttemptsKey = (identifier: string): string => `attempts:${identifier}`;
-
 export const getCooldownKey = (identifier: string): string => `cooldown:${identifier}`;
 
-// export const createRateLimiter = (config: CreateLimiterConfig) => {
-//     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-//         try {
-//             const key = getClientKey(req, config.type);
-//             const current = await redisClient.get(key);
-            
-//             if (current && parseInt(current) >= config.config.max) {
-//                 res.status(429).json({
-//                     success: false,
-//                     message: `Too many requests. Try again in ${config.config.window} seconds.`,
-//                     retryAfter: config.config.window
-//                 });
-//                 return;
-//             }
-            
-//             const multi = redisClient.multi();
-//             multi.incr(key);
-//             multi.expire(key, config.config.window);
-//             await multi.exec();
-            
-//             next();
-//         } catch (error) {
-//             console.error('Rate limiting error:', error);
-//             next(); // Continue on rate limiter failure
-//         }
-//     };
-// };
-
-// export const generateOTPLimiter = createRateLimiter({
-//     type: 'generate',
-//     config: RATE_LIMIT_CONFIG.GENERATE_OTP
-// });
-
-
-// export const verifyOTPLimiter = createRateLimiter({
-//     type: 'verify',
-//     config: RATE_LIMIT_CONFIG.VERIFY_OTP
-// });
-
-
 export class OTPService {
-    static async generateAndStore(identifier: string): Promise<string> {
-
-        const cooldownExists =  await OtpDao.checkCoolDown(identifier);
-        
-        if (cooldownExists) {
-            const ttl = await OtpDao.getCoolDownTTL(identifier);
-            throw new Error(`Please wait ${ttl} seconds before requesting a new OTP`);
-        }
-        
-        const otp = createOTP();
-        const hashedOTP = await bcrypt.hash(otp, 10);
-        
-        await OtpDao.storeOTP(hashedOTP, identifier, OTP_CONFIG.TTL,OTP_CONFIG.MAX_ATTEMPTS,OTP_CONFIG.RESEND_COOLDOWN)
-        
-        return otp;
+  /**
+   * Generates, hashes, and stores an OTP in Redis.
+   *
+   * @param identifier - Email or phone identifier
+   * @param isResend - When true, verifies resend quota and preserves remaining verification attempts
+   */
+  static async generateAndStore(identifier: string, isResend: boolean = false): Promise<string> {
+    // 1. Check if 60-second cooldown is still active
+    const cooldownExists = await OtpDao.checkCoolDown(identifier);
+    if (cooldownExists) {
+      const ttl = await OtpDao.getCoolDownTTL(identifier);
+      throw new Error(`Please wait ${ttl} seconds before requesting a new OTP`);
     }
 
-    static async verify(identifier: string, otp: string): Promise<boolean> {
+    let attemptsToSet = OTP_CONFIG.MAX_ATTEMPTS;
 
-        const storedHashedOTP = await OtpDao.getOTP(identifier);
-        if (!storedHashedOTP) {
-            throw new Error('OTP expired or not found');
-        }
-         
-        const remainingAttempts = await this.getRemainingAttempts(identifier)
-        if (!remainingAttempts || remainingAttempts <= 0) {
+    if (isResend) {
+      // 2. Check maximum resends limit
+      const resendCount = await OtpDao.getResendCount(identifier);
+      if (resendCount >= OTP_CONFIG.MAX_RESENDS) {
+        throw new Error(
+          `Maximum OTP resend limit reached (${OTP_CONFIG.MAX_RESENDS}). Please wait for the session to expire.`
+        );
+      }
 
-            await OtpDao.deleteHashedOtp(identifier);
-            await OtpDao.deleteAttempts(identifier);
-            
-            throw new Error('Maximum verification attempts exceeded');
-        }
-        
-        const isValid = await bcrypt.compare(otp.toString(), storedHashedOTP);
-        
-        if (!isValid) {
-            await OtpDao.decrement_attempt(identifier)
-            const newAttempts =await this.getRemainingAttempts(identifier) ? await this.getRemainingAttempts(identifier):0;
-            throw new Error(`Invalid OTP. ${newAttempts} attempts remaining`);
-        }
-        
-            await OtpDao.deleteHashedOtp(identifier);
-            await OtpDao.deleteAttempts(identifier);
-            await OtpDao.deleteCooldown(identifier);
-        return true;
-    }
-    static async getRemainingAttempts(identifier: string): Promise<number> {
-        const attempts= await OtpDao.getRemainingAttempts(identifier)
-        return attempts ? parseInt(attempts) : 0;
-    }
-    static async getOTPTTL(identifier: string): Promise<number> {
-        return await OtpDao.getOtpTTL(identifier);
+      // 3. Preserve existing verification attempts (prevent attacker from resetting attempts)
+      const existingAttemptsStr = await OtpDao.getRemainingAttempts(identifier);
+      const existingAttempts = existingAttemptsStr
+        ? parseInt(existingAttemptsStr, 10)
+        : OTP_CONFIG.MAX_ATTEMPTS;
 
+      if (existingAttempts <= 0) {
+        throw new Error("Maximum verification attempts exceeded for this session.");
+      }
+
+      attemptsToSet = existingAttempts;
+
+      // 4. Increment the resend counter
+      await OtpDao.incrementResendCount(identifier, OTP_CONFIG.TTL);
     }
-    static async clear(identifier:string):Promise<void>{
-        return await OtpDao.clearAll(identifier)
+
+    // 5. Generate and hash the OTP with bcrypt
+    const otp = createOTP();
+    const hashedOTP = await bcrypt.hash(otp, 10);
+
+    // 6. Atomically store in Redis with appropriate attempts count and 60s cooldown
+    await OtpDao.storeOTP(
+      hashedOTP,
+      identifier,
+      OTP_CONFIG.TTL,
+      attemptsToSet,
+      OTP_CONFIG.RESEND_COOLDOWN
+    );
+
+    return otp;
+  }
+
+  static async verify(identifier: string, otp: string): Promise<boolean> {
+    const storedHashedOTP = await OtpDao.getOTP(identifier);
+    if (!storedHashedOTP) {
+      throw new Error('OTP expired or not found');
     }
+
+    const remainingAttempts = await this.getRemainingAttempts(identifier);
+    if (!remainingAttempts || remainingAttempts <= 0) {
+      await OtpDao.deleteHashedOtp(identifier);
+      await OtpDao.deleteAttempts(identifier);
+      throw new Error('Maximum verification attempts exceeded');
+    }
+
+    const isValid = await bcrypt.compare(otp.toString(), storedHashedOTP);
+
+    if (!isValid) {
+      await OtpDao.decrement_attempt(identifier);
+      const newAttempts = (await this.getRemainingAttempts(identifier)) || 0;
+      throw new Error(`Invalid OTP. ${newAttempts} attempts remaining`);
+    }
+
+    // Clear OTP, attempts, cooldown, and resends on successful verification
+    await OtpDao.clearAll(identifier);
+    return true;
+  }
+
+  static async getRemainingAttempts(identifier: string): Promise<number> {
+    const attempts = await OtpDao.getRemainingAttempts(identifier);
+    return attempts ? parseInt(attempts, 10) : 0;
+  }
+
+  static async getOTPTTL(identifier: string): Promise<number> {
+    return await OtpDao.getOtpTTL(identifier);
+  }
+
+  static async clear(identifier: string): Promise<void> {
+    await OtpDao.clearAll(identifier);
+  }
 }
