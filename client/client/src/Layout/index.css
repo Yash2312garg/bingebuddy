@@ -4,12 +4,14 @@
     justify-content: flex-start;
     flex-direction: row;
     position: relative;
+    height: 100vh;
+    overflow: hidden;
 }
 .PostLoginLayouts-right-cntr{
-    width: 100%;
+    flex: 1;
     height: 100vh;
-    background-color: var(  --Ghost-White-Color);
-    padding: 20px;
+    background-color: var(--Ghost-White-Color);
+    padding: 20px 32px 40px 32px;
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -17,6 +19,7 @@
     align-items: flex-start;
     gap: 20px;
     box-sizing: border-box;
+    overflow-y: auto;
 }
 .PostLoginLayouts-header{
     display: flex;

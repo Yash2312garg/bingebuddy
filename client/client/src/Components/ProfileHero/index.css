@@ -1,0 +1,325 @@
+/* ==========================================================================
+   ProfileHero Component Styles
+   ========================================================================== */
+
+.profile-hero-card {
+  background: #ffffff;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--Trace-Grey-Color);
+  position: relative;
+}
+
+.profile-cover-banner {
+  height: 220px;
+  width: 100%;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.profile-cover-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.45) 100%);
+  pointer-events: none;
+}
+
+.profile-banner-btn {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--Primary-Text-Color);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.profile-banner-btn:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.profile-header-body {
+  padding: 0 44px 36px 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.profile-identity-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  flex: 1;
+}
+
+.profile-squircle-avatar-wrap {
+  width: 130px;
+  height: 130px;
+  margin-top: -65px;
+  position: relative;
+  z-index: 10;
+  border-radius: 46px;
+  background: #ffffff;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  box-sizing: border-box;
+}
+
+.profile-squircle-avatar-wrap:hover {
+  transform: scale(1.02);
+}
+
+.profile-squircle-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 40px;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-avatar-overlay {
+  position: absolute;
+  inset: 6px;
+  border-radius: 40px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.profile-squircle-avatar-wrap:hover .profile-avatar-overlay {
+  opacity: 1;
+}
+
+.profile-details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 18px;
+  flex: 1;
+}
+
+.profile-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.profile-restaurant-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--Primary-Text-Color);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.badge-pro-pill {
+  background: #00b074;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  letter-spacing: 0.5px;
+}
+
+.badge-locked-pill {
+  background: var(--Ghost-White-Color);
+  border: 1px solid var(--Trace-Grey-Color);
+  color: var(--Secondary-Text-Color);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-bio-text {
+  font-size: 14px;
+  color: var(--Secondary-Text-Color);
+  margin: 0;
+  line-height: 1.6;
+  max-width: 600px;
+}
+
+.profile-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--Secondary-Text-Color);
+  font-weight: 500;
+}
+
+.badge-ref-id {
+  background: var(--Ghost-White-Color);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--Trace-Grey-Color);
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.profile-meta-dot {
+  color: var(--muted-Grey-color);
+}
+
+.profile-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.btn-pill-dark {
+  background: var(--Primary-Text-Color);
+  color: #ffffff;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-pill-dark:hover {
+  background: #1e1d32;
+  transform: translateY(-1px);
+}
+
+.btn-pill-outline {
+  background: transparent;
+  color: var(--Primary-Text-Color);
+  border: 1.5px solid var(--Trace-Grey-Color);
+  padding: 8px 18px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-pill-outline:hover,
+.btn-pill-outline.active-preview {
+  border-color: var(--Primary-Color);
+  color: var(--Primary-Color);
+  background: rgba(112, 0, 255, 0.05);
+}
+
+.profile-stats-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 18px;
+  padding-top: 18px;
+  flex-shrink: 0;
+}
+
+.profile-badge-icons {
+  display: flex;
+  gap: 8px;
+}
+
+.round-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.badge-orange { background: #ff7a00; }
+.badge-purple { background: var(--Primary-Color); }
+.badge-dark { background: var(--Primary-Text-Color); }
+
+.profile-stat-numbers {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--Ghost-White-Color);
+  border: 1px solid var(--Trace-Grey-Color);
+  padding: 10px 18px;
+  border-radius: 16px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--Secondary-Text-Color);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--Primary-Text-Color);
+}
+
+@media (max-width: 900px) {
+  .profile-header-body {
+    flex-direction: column;
+    padding: 0 24px 24px 24px;
+  }
+  .profile-stats-aside {
+    align-items: flex-start;
+    padding-top: 0;
+  }
+  .profile-identity-group {
+    flex-direction: column;
+  }
+  .profile-squircle-avatar-wrap {
+    margin-top: -50px;
+  }
+}

@@ -1,0 +1,134 @@
+/* ==========================================================================
+   Restaurant Profile Page Styles
+   ========================================================================== */
+
+/* Scoped Scroll Container */
+.profile-container-scroll {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  padding-right: 4px;
+}
+
+/* Custom Scrollbar for Smooth Feel */
+.profile-container-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.profile-container-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.profile-container-scroll::-webkit-scrollbar-thumb {
+  background: var(--muted-Grey-color);
+  border-radius: 9999px;
+}
+.profile-container-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--Medium-Grey-color);
+}
+
+.profile-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding-bottom: 60px;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Live Customer Preview Section
+   ========================================================================== */
+
+.live-preview-section {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 28px 36px;
+  border: 1px solid var(--Trace-Grey-Color);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 4px 20px rgba(44, 42, 74, 0.04);
+}
+
+.live-preview-header h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  color: var(--Primary-Text-Color);
+}
+
+.live-preview-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--Secondary-Text-Color);
+}
+
+.live-preview-container {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.customer-mobile-mockup {
+  width: 360px;
+  background: #ffffff;
+  border-radius: 36px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(44, 42, 74, 0.15);
+  border: 8px solid #2c2a4a;
+}
+
+.mockup-banner {
+  height: 140px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.mockup-content {
+  padding: 0 16px 20px 16px;
+  position: relative;
+}
+
+.mockup-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  border: 3px solid #ffffff;
+  margin-top: -32px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  object-fit: cover;
+  background: #ffffff;
+}
+
+.mockup-title {
+  margin: 10px 0 4px 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--Primary-Text-Color);
+}
+
+.mockup-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--Secondary-Text-Color);
+  line-height: 1.4;
+}
+
+.mockup-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.mockup-tag {
+  background: var(--Ghost-White-Color);
+  color: var(--Primary-Text-Color);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+}

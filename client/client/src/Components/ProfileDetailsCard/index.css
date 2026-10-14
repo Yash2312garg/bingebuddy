@@ -1,0 +1,153 @@
+/* ==========================================================================
+   ProfileDetailsCard Component Styles
+   ========================================================================== */
+
+.profile-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--Trace-Grey-Color);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.profile-card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 1px solid var(--Trace-Grey-Color);
+  padding-bottom: 18px;
+}
+
+.profile-card-header-row h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--Primary-Text-Color);
+  margin: 0 0 4px 0;
+}
+
+.profile-card-header-row p {
+  font-size: 13px;
+  color: var(--Secondary-Text-Color);
+  margin: 0;
+}
+
+.profile-details-display-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.detail-item-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--Secondary-Text-Color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-lock-tag {
+  font-size: 11px;
+  background: var(--Ghost-White-Color);
+  border: 1px solid var(--Trace-Grey-Color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--Secondary-Text-Color);
+}
+
+.detail-value-locked {
+  background: var(--Ghost-White-Color);
+  border: 1px solid var(--Trace-Grey-Color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-name-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--Primary-Text-Color);
+}
+
+.detail-lock-hint {
+  font-size: 11px;
+  color: var(--Secondary-Text-Color);
+  font-style: italic;
+}
+
+.detail-desc-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--Primary-Text-Color);
+  background: var(--Ghost-White-Color);
+  border: 1px solid var(--Trace-Grey-Color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 0;
+  min-height: 52px;
+}
+
+.cuisines-tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cuisine-tag-chip {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--Ghost-White-Color);
+  border: 1px solid var(--Trace-Grey-Color);
+  color: var(--Secondary-Text-Color);
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.cuisine-tag-chip.selected {
+  background: rgba(112, 0, 255, 0.08);
+  border-color: var(--Primary-Color);
+  color: var(--Primary-Color);
+  font-weight: 600;
+}
+
+.detail-ref-box {
+  background: var(--Ghost-White-Color);
+  border: 1px solid var(--Trace-Grey-Color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-ref-box code {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--Primary-Color);
+}
+
+.detail-copy-hint {
+  font-size: 11px;
+  color: var(--Secondary-Text-Color);
+}
+
+@media (max-width: 768px) {
+  .profile-details-display-grid {
+    grid-template-columns: 1fr;
+  }
+}

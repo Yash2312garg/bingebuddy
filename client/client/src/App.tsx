@@ -18,6 +18,10 @@ import EditCategory from "./EditCategory";
 import Items from "./Items";
 import CreateItems from "./CreateItems";
 import EditItems from "./EditItems";
+import ProfileSettings from "./Settings/Profile";
+import AddressSettings from "./Settings/Address";
+import HoursSettings from "./Settings/Hours";
+import LegalSettings from "./Settings/Legal";
 
 const router = createBrowserRouter([
   {
@@ -139,6 +143,42 @@ const router = createBrowserRouter([
                 handle: {
                   primaryHeading: "Menu Items",
                   secondaryHeading: "Edit your item details",
+                },
+              },
+              {
+                path: "/settings/profile",
+                element: <ProfileSettings />,
+                handle: {
+                  primaryHeading: "Restaurant Profile",
+                  secondaryHeading:
+                    "Manage your brand identity, storefront logo, cover photography, and public details",
+                },
+              },
+              {
+                path: "/settings/address",
+                element: <AddressSettings />,
+                handle: {
+                  primaryHeading: "Address & Location",
+                  secondaryHeading:
+                    "Configure your storefront physical address and delivery hub coordinates",
+                },
+              },
+              {
+                path: "/settings/hours",
+                element: <HoursSettings />,
+                handle: {
+                  primaryHeading: "Operating Hours",
+                  secondaryHeading:
+                    "Set your kitchen schedule, opening/closing hours, and weekly availability",
+                },
+              },
+              {
+                path: "/settings/legal",
+                element: <LegalSettings />,
+                handle: {
+                  primaryHeading: "Legal & Account Info",
+                  secondaryHeading:
+                    "Review business tax details, FSSAI compliance, and account credentials",
                 },
               },
             ],

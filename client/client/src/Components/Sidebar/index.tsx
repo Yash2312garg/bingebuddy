@@ -122,21 +122,27 @@ const NAVIGATION: NavigationItem[] = [
     children: [
 
       {
-        id: "general",
-        label: "General",
-        path: "/settings/general",
+        id: "restaurant-profile",
+        label: "Restaurant Profile",
+        path: "/settings/profile",
       },
 
       {
-        id: "users",
-        label: "Users",
-        path: "/settings/users",
+        id: "address-location",
+        label: "Address & Location",
+        path: "/settings/address",
       },
 
       {
-        id: "permissions",
-        label: "Permissions",
-        path: "/settings/permissions",
+        id: "operating-hours",
+        label: "Operating Hours",
+        path: "/settings/hours",
+      },
+
+      {
+        id: "legal-account",
+        label: "Legal & Account Info",
+        path: "/settings/legal",
       },
 
     ],

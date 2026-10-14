@@ -19,15 +19,33 @@ export class LeakyBucketThrottle extends BaseAlgorithm<LeakyBucketOptions> {
     const cost = this.options.cost || 1;
     // TTL: enough time for full capacity to drain to 0, plus 60s
     const ttlSec = Math.max(60, Math.ceil(capacity / Math.max(0.1, leakRate)) + 60);
-
+    console.log("inside evaluate class in the leaky bucket throttle before lua", {
+      key,
+      leakRate,
+      nowSec,
+      cost,
+      ttlSec
+    })
     const [allowed, currentWater, remaining, retryAfterSec] = (await BaseAlgorithm.executeLua(
       LEAKY_BUCKET_LUA,
       [key],
       [capacity, leakRate, nowSec, cost, ttlSec]
     )) as [number, number, number, number];
 
+    console.log("inside evaluate class in the leaky bucket throttle after lua", {
+      allowed,
+      currentWater,
+      remaining,
+      retryAfterSec
+    })
     const resetTime = Date.now() + (retryAfterSec * 1000);
-
+    console.log("inside evaluate class in the leaky bucket throttle after calculating reset time", {
+      resetTime,
+      allowed,
+      currentWater,
+      remaining,
+      retryAfterSec
+    })
     return {
       allowed: allowed === 1,
       limit: capacity,
